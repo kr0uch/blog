@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS images;
+
+DROP TABLE IF EXISTS posts;
+
+DROP TABLE IF EXISTS users;
+
+DROP EXTENSION "uuid-ossp";
