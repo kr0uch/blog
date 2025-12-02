@@ -1,0 +1,54 @@
+package postgre
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	_ "github.com/lib/pq"
+)
+
+type PostgreConfig struct {
+	Port     string `env:"POSTGRES_PORT" env-default:"5432"`
+	Host     string `env:"POSTGRES_HOST" env-default:"localhost"`
+	User     string `env:"POSTGRES_USER" env-default:"postgres"`
+	Password string `env:"POSTGRES_PASSWORD" env-default:"123"`
+	SSLMode  string `env:"POSTGRES_SSLMODE" env-default:"disable"`
+}
+
+type DB struct {
+	*sql.DB
+}
+
+func NewDB(DBName string, config PostgreConfig, ctx context.Context) (*DB, error) {
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=%s",
+		config.Host, config.Port, config.User, config.Password, config.SSLMode)
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %v", err)
+	}
+
+	var exists bool
+	err = db.QueryRow(`SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname = $1)`, DBName).Scan(&exists)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if database exists: %v", err)
+	}
+
+	if !exists {
+		_, err = db.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, DBName))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create database: %v", err)
+		}
+	}
+
+	db, err = sql.Open("postgres", fmt.Sprintf("%s dbname=%s", dsn, DBName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %v", err)
+	}
+
+	_, err = db.Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %v", err)
+	}
+	return &DB{db}, nil
+}
