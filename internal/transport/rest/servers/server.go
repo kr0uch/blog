@@ -1,6 +1,7 @@
 package servers
 
 import (
+	"blog/api"
 	_ "blog/docs"
 	"blog/internal/database/postgre"
 	"blog/internal/repository"
@@ -22,14 +23,21 @@ type BlogServer struct {
 func NewBlogServer(cfg BlogServerConfig, db *postgre.DB) *BlogServer {
 	mainRouter := http.NewServeMux()
 
+	swagger := api.NewSwagger()
+	swagger.Setup()
+
 	repo := repository.NewBlogRepository(db.DB)
 	authRouter, _ := routers.NewAuthRouter(repo)
 
 	mainRouter.Handle("/auth/", authRouter)
 
-	http.DefaultServeMux.Handle("/api/", http.StripPrefix("/api", mainRouter))
+	mainRouter.Handle("/api/", http.StripPrefix("/api", mainRouter))
+	mainRouter.Handle("/swagger/", swagger.Router)
 
-	server := &http.Server{Addr: fmt.Sprintf(":%s", cfg.Port)}
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%s", cfg.Port),
+		Handler: mainRouter,
+	}
 
 	return &BlogServer{
 		cfg:    cfg,
