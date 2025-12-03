@@ -1,7 +1,7 @@
 package config
 
 import (
-	"blog/pkg/database/postgre"
+	"blog/internal/database/postgre"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
