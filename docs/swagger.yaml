@@ -1,0 +1,49 @@
+basePath: /
+definitions:
+  models.RegistrateUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+    type: object
+  models.RegistrateUserResponse:
+    properties:
+      access_token:
+        type: string
+      id:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API для блога с аутентификацией
+  title: Blog API
+  version: "1.0"
+paths:
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegistrateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RegistrateUserResponse'
+      summary: Зарегистрировать пользователя
+      tags:
+      - Аутентификация
+swagger: "2.0"

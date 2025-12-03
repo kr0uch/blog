@@ -20,6 +20,14 @@ func NewAuthRouter(srv AuthService) *AuthController {
 	}
 }
 
+// RegistrateUser godoc
+// @Summary Зарегистрировать пользователя
+// @Tags Аутентификация
+// @Accept json
+// @Produce json
+// @Param request body models.RegistrateUserRequest true "Данные пользователя"
+// @Success 200 {object} models.RegistrateUserResponse
+// @Router /api/auth/register [post]
 func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) {
 	var request models.RegistrateUserRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
