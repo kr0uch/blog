@@ -9,6 +9,8 @@ import (
 
 type AuthService interface {
 	RegistrateUser(user *models.RegistrateUserRequest) (*models.RegistrateUserResponse, error)
+	LoginUser(user *models.LoginUserRequest) (*models.LoginUserResponse, error)
+	RefreshUserToken(token *models.RefreshUserTokenRequest) (*models.RefreshUserTokenResponse, error)
 }
 type AuthController struct {
 	srv AuthService
@@ -22,7 +24,7 @@ func NewAuthRouter(srv AuthService) *AuthController {
 
 // RegistrateUser godoc
 // @Summary Зарегистрировать пользователя
-// @Tags Аутентификация
+// @Tags Роли пользователей и аутентификация
 // @Accept json
 // @Produce json
 // @Param request body models.RegistrateUserRequest true "Данные пользователя"
@@ -50,6 +52,83 @@ func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Authorization", "Bearer "+response.AccessToken)
 
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+// LoginUser godoc
+// @Summary Залогинить пользователя
+// @Tags Роли пользователей и аутентификация
+// @Accept json
+// @Produce json
+// @Param request body models.LoginUserRequest true "Данные пользователя"
+// @Success 200 {object} models.LoginUserResponse
+// @Router /api/auth/login [post]
+func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
+	var request models.LoginUserRequest
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	response, err := c.srv.LoginUser(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		err = json.NewEncoder(w).Encode(models.ErrorResponse{Error: err.Error()})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+		return
+	}
+
+	w.Header().Set("Authorization", "Bearer "+response.AccessToken)
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+// RefreshUserToken godoc
+// @Summary Обновить токен пользователя
+// @Tags Роли пользователей и аутентификация
+// @Accept json
+// @Produce json
+// @Param request body models.RefreshUserTokenRequest true "Данные пользователя"
+// @Success 200 {object} models.RefreshUserTokenResponse
+// @Router /api/auth/refresh-token [post]
+func (c *AuthController) RefreshUserToken(w http.ResponseWriter, r *http.Request) {
+	var request models.RefreshUserTokenRequest
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	response, err := c.srv.RefreshUserToken(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		err = json.NewEncoder(w).Encode(models.ErrorResponse{Error: err.Error()})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+		return
+	}
+
+	w.Header().Set("Authorization", "Bearer "+response.AccessToken)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		log.Println(err)

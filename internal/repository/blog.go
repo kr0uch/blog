@@ -37,7 +37,7 @@ func (r *BlogRepository) CreateUser(email, passwordHash, role, refreshToken stri
 	return &user, nil
 }
 
-func (r *BlogRepository) GetUser(email string) (*models.User, error) {
+func (r *BlogRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
 
 	query := `SELECT * FROM users WHERE email = $1`
@@ -52,6 +52,37 @@ func (r *BlogRepository) GetUser(email string) (*models.User, error) {
 	return &user, nil
 }
 
+func (r *BlogRepository) GetUserByRefreshToken(refreshToken string) (*models.User, error) {
+	var user models.User
+
+	query := `SELECT * FROM users WHERE refresh_token = $1`
+	err := r.DB.QueryRow(query, refreshToken).
+		Scan(&user.UserId, &user.Email, &user.PasswordHash, &user.Role, &user.RefreshToken, &user.RefreshTokenExpiryTime)
+	if err != nil {
+		if stderr.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrInvalidEmailOrPassword
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *BlogRepository) GetUserById(userId string) (*models.User, error) {
+	var user models.User
+
+	query := `SELECT * FROM users WHERE user_id = $1`
+	err := r.DB.QueryRow(query, userId).
+		Scan(&user.UserId, &user.Email, &user.PasswordHash, &user.Role, &user.RefreshToken, &user.RefreshTokenExpiryTime)
+	if err != nil {
+		if stderr.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrInvalidAccessToken
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *BlogRepository) UpdateRefreshToken(userId, refreshToken string) error {
 	query := `UPDATE users SET refresh_token = $1 WHERE user_id = $2`
 	_, err := r.DB.Exec(query, refreshToken, userId)
@@ -59,4 +90,83 @@ func (r *BlogRepository) UpdateRefreshToken(userId, refreshToken string) error {
 		return err
 	}
 	return nil
+}
+
+func (r *BlogRepository) CreatePost(authorId, idempotencyKey, title, content, status string, createdAt, updatedAt time.Time) (*models.Post, error) {
+	var post models.Post
+
+	query := `INSERT INTO posts (author_id, idempotency_key, title, content, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`
+	err := r.DB.QueryRow(query, authorId, idempotencyKey, title, content, status, createdAt, updatedAt).
+		Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
+	if err != nil {
+		pgErr, ok := err.(*pq.Error)
+		if ok && pgErr.Code == "23505" {
+			return nil, errors.ErrInvalidIdempotencyKey
+		}
+		return nil, err
+	}
+	return &post, nil
+}
+
+func (r *BlogRepository) GetPostById(postId string) (*models.Post, error) {
+	var post models.Post
+
+	query := `SELECT * FROM posts WHERE post_id = $1`
+	err := r.DB.QueryRow(query, postId).Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
+	if err != nil {
+		if stderr.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrInvalidPostId
+		}
+		return nil, err
+	}
+
+	return &post, nil
+}
+
+func (r *BlogRepository) EditPost(postId, authorId, idempotencyKey, title, content, status string, createdAt, updatedAt time.Time) (*models.Post, error) {
+	var post models.Post
+
+	query := `UPDATE posts SET author_id = $1, idempotency_key = $2, title = $3, content = $4, status = $5, created_at = $6, updated_at = $7 WHERE post_id = $8 RETURNING *`
+	err := r.DB.QueryRow(query, authorId, idempotencyKey, title, content, status, createdAt, updatedAt, postId).
+		Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &post, nil
+}
+
+func (r *BlogRepository) GetPostsById(userId string) ([]*models.Post, error) {
+	var posts []*models.Post
+	query := `SELECT * FROM posts WHERE author_id = $1`
+	rows, err := r.DB.Query(query, userId)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var post models.Post
+		err = rows.Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, &post)
+	}
+	return posts, nil
+}
+
+func (r *BlogRepository) GetAllPosts() ([]*models.Post, error) {
+	var posts []*models.Post
+	query := `SELECT * FROM posts WHERE status = $1`
+	rows, err := r.DB.Query(query, "Published")
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var post models.Post
+		err = rows.Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, &post)
+	}
+	return posts, nil
 }

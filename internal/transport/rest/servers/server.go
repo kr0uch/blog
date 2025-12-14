@@ -5,6 +5,7 @@ import (
 	_ "blog/docs"
 	"blog/internal/database/postgre"
 	"blog/internal/repository"
+	"blog/internal/transport/rest/middlewares"
 	"blog/internal/transport/rest/routers"
 	"fmt"
 	"log"
@@ -27,11 +28,21 @@ func NewBlogServer(cfg BlogServerConfig, db *postgre.DB) *BlogServer {
 	swagger.Setup()
 
 	repo := repository.NewBlogRepository(db.DB)
-	authRouter, _ := routers.NewAuthRouter(repo)
+
+	authRouter, authService := routers.NewAuthRouter(repo)
+	postsRouter := routers.NewPostsRouter(repo)
+	viewRouter := routers.NewViewRouter(repo)
+
+	authMiddleware := middlewares.NewAuthMiddlewareHandler(authService).AuthMiddleware
+	globalMiddleware := middlewares.GlobalMiddleware
+
+	postsRouter.Handle("/", viewRouter) //т.к. необходимо дважды / роут
+	// и в целом оно ложится т.к. тут тоже работа с постом
 
 	mainRouter.Handle("/auth/", authRouter)
+	mainRouter.Handle("/", authMiddleware(postsRouter)) //т.к. /posts не совместим с /posts/{id}
 
-	mainRouter.Handle("/api/", http.StripPrefix("/api", mainRouter))
+	mainRouter.Handle("/api/", http.StripPrefix("/api", globalMiddleware(mainRouter)))
 	mainRouter.Handle("/swagger/", swagger.Router)
 
 	server := &http.Server{

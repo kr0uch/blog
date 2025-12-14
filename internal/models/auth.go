@@ -1,5 +1,7 @@
 package models
 
+//TODO: почистить от ненужных
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
@@ -22,6 +24,15 @@ type LoginUserRequest struct {
 
 type LoginUserResponse struct {
 	Id           string `json:"user_id"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RefreshUserTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RefreshUserTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }

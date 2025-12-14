@@ -1,5 +1,107 @@
 basePath: /
 definitions:
+  models.AddImageToPostResponse:
+    properties:
+      post_id:
+        type: string
+    type: object
+  models.CreatePostRequest:
+    properties:
+      author_id:
+        type: string
+      content:
+        type: string
+      idempotency_key:
+        type: string
+      title:
+        type: string
+    type: object
+  models.CreatePostResponse:
+    properties:
+      post_id:
+        type: string
+    type: object
+  models.DeleteImageFromPostResponse:
+    properties:
+      post_id:
+        type: string
+    type: object
+  models.EditPostRequest:
+    properties:
+      content:
+        type: string
+      title:
+        type: string
+    type: object
+  models.EditPostResponse:
+    properties:
+      post_id:
+        type: string
+    type: object
+  models.GetPostsResponse:
+    properties:
+      posts:
+        items:
+          $ref: '#/definitions/models.Post'
+        type: array
+    type: object
+  models.LoginUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.LoginUserResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.Post:
+    properties:
+      author_id:
+        type: string
+      content:
+        type: string
+      created_at:
+        type: string
+      idempotency_key:
+        type: string
+      post_id:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.PublishPostRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  models.PublishPostResponse:
+    properties:
+      post_id:
+        type: string
+    type: object
+  models.RefreshUserTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  models.RefreshUserTokenResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
   models.RegistrateUserRequest:
     properties:
       email:
@@ -25,6 +127,48 @@ info:
   title: Blog API
   version: "1.0"
 paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LoginUserResponse'
+      summary: Залогинить пользователя
+      tags:
+      - Роли пользователей и аутентификация
+  /api/auth/refresh-token:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RefreshUserTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RefreshUserTokenResponse'
+      summary: Обновить токен пользователя
+      tags:
+      - Роли пользователей и аутентификация
   /api/auth/register:
     post:
       consumes:
@@ -45,5 +189,165 @@ paths:
             $ref: '#/definitions/models.RegistrateUserResponse'
       summary: Зарегистрировать пользователя
       tags:
-      - Аутентификация
+      - Роли пользователей и аутентификация
+  /api/posts:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Токен авторизации
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.GetPostsResponse'
+      summary: Просмотр постов
+      tags:
+      - Просмотр постов
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные поста
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreatePostRequest'
+      - description: Токен авторизации
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CreatePostResponse'
+      summary: Создать пост
+      tags:
+      - Управление постами
+  /api/posts/{postId}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Новое название поста
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.EditPostRequest'
+      - description: Токен авторизации
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.EditPostResponse'
+      summary: Редактировать пост
+      tags:
+      - Управление постами
+  /api/posts/{postId}/images:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - in: path
+        name: postId
+        type: string
+      - description: Токен авторизации
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AddImageToPostResponse'
+      summary: Добавить картинку к посту
+      tags:
+      - Управление постами
+  /api/posts/{postId}/images/{imageId}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: ID картинки
+        in: path
+        name: imageId
+        required: true
+        type: string
+      - description: Токен авторизации
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DeleteImageFromPostResponse'
+      summary: Удалить картинку из поста
+      tags:
+      - Управление постами
+  /api/posts/{postId}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Статус поста
+        in: body
+        name: status
+        required: true
+        schema:
+          $ref: '#/definitions/models.PublishPostRequest'
+      - description: Токен авторизации
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PublishPostResponse'
+      summary: Опубликовать пост
+      tags:
+      - Управление постами
 swagger: "2.0"
