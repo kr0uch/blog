@@ -1,11 +1,11 @@
 basePath: /
 definitions:
-  models.AddImageToPostResponse:
+  dto.AddImageToPostResponse:
     properties:
-      post_id:
+      image_id:
         type: string
     type: object
-  models.CreatePostRequest:
+  dto.CreatePostRequest:
     properties:
       author_id:
         type: string
@@ -16,43 +16,43 @@ definitions:
       title:
         type: string
     type: object
-  models.CreatePostResponse:
+  dto.CreatePostResponse:
     properties:
       post_id:
         type: string
     type: object
-  models.DeleteImageFromPostResponse:
+  dto.DeleteImageFromPostResponse:
     properties:
       post_id:
         type: string
     type: object
-  models.EditPostRequest:
+  dto.EditPostRequest:
     properties:
       content:
         type: string
       title:
         type: string
     type: object
-  models.EditPostResponse:
+  dto.EditPostResponse:
     properties:
       post_id:
         type: string
     type: object
-  models.GetPostsResponse:
+  dto.GetPostsResponse:
     properties:
       posts:
         items:
-          $ref: '#/definitions/models.Post'
+          $ref: '#/definitions/entities.Post'
         type: array
     type: object
-  models.LoginUserRequest:
+  dto.LoginUserRequest:
     properties:
       email:
         type: string
       password:
         type: string
     type: object
-  models.LoginUserResponse:
+  dto.LoginUserResponse:
     properties:
       access_token:
         type: string
@@ -61,7 +61,47 @@ definitions:
       user_id:
         type: string
     type: object
-  models.Post:
+  dto.PublishPostRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  dto.PublishPostResponse:
+    properties:
+      post_id:
+        type: string
+    type: object
+  dto.RefreshUserTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  dto.RefreshUserTokenResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  dto.RegistrateUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+    type: object
+  dto.RegistrateUserResponse:
+    properties:
+      access_token:
+        type: string
+      id:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  entities.Post:
     properties:
       author_id:
         type: string
@@ -78,46 +118,6 @@ definitions:
       title:
         type: string
       updated_at:
-        type: string
-    type: object
-  models.PublishPostRequest:
-    properties:
-      status:
-        type: string
-    type: object
-  models.PublishPostResponse:
-    properties:
-      post_id:
-        type: string
-    type: object
-  models.RefreshUserTokenRequest:
-    properties:
-      refresh_token:
-        type: string
-    type: object
-  models.RefreshUserTokenResponse:
-    properties:
-      access_token:
-        type: string
-      refresh_token:
-        type: string
-    type: object
-  models.RegistrateUserRequest:
-    properties:
-      email:
-        type: string
-      password:
-        type: string
-      role:
-        type: string
-    type: object
-  models.RegistrateUserResponse:
-    properties:
-      access_token:
-        type: string
-      id:
-        type: string
-      refresh_token:
         type: string
     type: object
 host: localhost:8080
@@ -137,14 +137,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.LoginUserRequest'
+          $ref: '#/definitions/dto.LoginUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.LoginUserResponse'
+            $ref: '#/definitions/dto.LoginUserResponse'
       summary: Залогинить пользователя
       tags:
       - Роли пользователей и аутентификация
@@ -158,14 +158,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.RefreshUserTokenRequest'
+          $ref: '#/definitions/dto.RefreshUserTokenRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.RefreshUserTokenResponse'
+            $ref: '#/definitions/dto.RefreshUserTokenResponse'
       summary: Обновить токен пользователя
       tags:
       - Роли пользователей и аутентификация
@@ -179,14 +179,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.RegistrateUserRequest'
+          $ref: '#/definitions/dto.RegistrateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.RegistrateUserResponse'
+            $ref: '#/definitions/dto.RegistrateUserResponse'
       summary: Зарегистрировать пользователя
       tags:
       - Роли пользователей и аутентификация
@@ -206,7 +206,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.GetPostsResponse'
+            $ref: '#/definitions/dto.GetPostsResponse'
       summary: Просмотр постов
       tags:
       - Просмотр постов
@@ -219,7 +219,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreatePostRequest'
+          $ref: '#/definitions/dto.CreatePostRequest'
       - description: Токен авторизации
         in: header
         name: Authorization
@@ -231,7 +231,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.CreatePostResponse'
+            $ref: '#/definitions/dto.CreatePostResponse'
       summary: Создать пост
       tags:
       - Управление постами
@@ -250,7 +250,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.EditPostRequest'
+          $ref: '#/definitions/dto.EditPostRequest'
       - description: Токен авторизации
         in: header
         name: Authorization
@@ -262,18 +262,25 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.EditPostResponse'
+            $ref: '#/definitions/dto.EditPostResponse'
       summary: Редактировать пост
       tags:
       - Управление постами
   /api/posts/{postId}/images:
     post:
       consumes:
-      - application/json
+      - multipart/form-data
       parameters:
-      - in: path
+      - description: ID поста
+        in: path
         name: postId
+        required: true
         type: string
+      - description: Картинка
+        in: formData
+        name: file
+        required: true
+        type: file
       - description: Токен авторизации
         in: header
         name: Authorization
@@ -285,7 +292,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.AddImageToPostResponse'
+            $ref: '#/definitions/dto.AddImageToPostResponse'
       summary: Добавить картинку к посту
       tags:
       - Управление постами
@@ -315,7 +322,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.DeleteImageFromPostResponse'
+            $ref: '#/definitions/dto.DeleteImageFromPostResponse'
       summary: Удалить картинку из поста
       tags:
       - Управление постами
@@ -334,7 +341,7 @@ paths:
         name: status
         required: true
         schema:
-          $ref: '#/definitions/models.PublishPostRequest'
+          $ref: '#/definitions/dto.PublishPostRequest'
       - description: Токен авторизации
         in: header
         name: Authorization
@@ -346,7 +353,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.PublishPostResponse'
+            $ref: '#/definitions/dto.PublishPostResponse'
       summary: Опубликовать пост
       tags:
       - Управление постами

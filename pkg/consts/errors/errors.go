@@ -12,4 +12,6 @@ var (
 	ErrInvalidPostId          = errors.New("invalid post id")
 	ErrInvalidPostState       = errors.New("invalid post status")
 	ErrInvalidUser            = errors.New("invalid user")
+	ErrMinioBucketNotExists   = errors.New("minio bucket does not exist")
+	ErrInvalidImageId         = errors.New("invalid image id")
 )

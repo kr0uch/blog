@@ -5,6 +5,7 @@ import (
 	_ "blog/docs"
 	"blog/internal/database/postgre"
 	"blog/internal/repository"
+	"blog/internal/storage/minio"
 	"blog/internal/transport/rest/middlewares"
 	"blog/internal/transport/rest/routers"
 	"fmt"
@@ -21,7 +22,9 @@ type BlogServer struct {
 	server *http.Server
 }
 
-func NewBlogServer(cfg BlogServerConfig, db *postgre.DB) *BlogServer {
+//TODO: repo2 пофиксить
+
+func NewBlogServer(cfg BlogServerConfig, minioClient *minio.MinioClient, db *postgre.DB) (*BlogServer, error) {
 	mainRouter := http.NewServeMux()
 
 	swagger := api.NewSwagger()
@@ -30,14 +33,10 @@ func NewBlogServer(cfg BlogServerConfig, db *postgre.DB) *BlogServer {
 	repo := repository.NewBlogRepository(db.DB)
 
 	authRouter, authService := routers.NewAuthRouter(repo)
-	postsRouter := routers.NewPostsRouter(repo)
-	viewRouter := routers.NewViewRouter(repo)
+	postsRouter := routers.NewPostsRouter(repo, minioClient)
 
 	authMiddleware := middlewares.NewAuthMiddlewareHandler(authService).AuthMiddleware
 	globalMiddleware := middlewares.GlobalMiddleware
-
-	postsRouter.Handle("/", viewRouter) //т.к. необходимо дважды / роут
-	// и в целом оно ложится т.к. тут тоже работа с постом
 
 	mainRouter.Handle("/auth/", authRouter)
 	mainRouter.Handle("/", authMiddleware(postsRouter)) //т.к. /posts не совместим с /posts/{id}
@@ -53,7 +52,7 @@ func NewBlogServer(cfg BlogServerConfig, db *postgre.DB) *BlogServer {
 	return &BlogServer{
 		cfg:    cfg,
 		server: server,
-	}
+	}, nil
 }
 
 func (srv *BlogServer) Start() error {

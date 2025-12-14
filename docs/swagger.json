@@ -28,7 +28,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.LoginUserRequest"
+                            "$ref": "#/definitions/dto.LoginUserRequest"
                         }
                     }
                 ],
@@ -36,7 +36,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.LoginUserResponse"
+                            "$ref": "#/definitions/dto.LoginUserResponse"
                         }
                     }
                 }
@@ -61,7 +61,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.RefreshUserTokenRequest"
+                            "$ref": "#/definitions/dto.RefreshUserTokenRequest"
                         }
                     }
                 ],
@@ -69,7 +69,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.RefreshUserTokenResponse"
+                            "$ref": "#/definitions/dto.RefreshUserTokenResponse"
                         }
                     }
                 }
@@ -94,7 +94,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.RegistrateUserRequest"
+                            "$ref": "#/definitions/dto.RegistrateUserRequest"
                         }
                     }
                 ],
@@ -102,7 +102,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.RegistrateUserResponse"
+                            "$ref": "#/definitions/dto.RegistrateUserResponse"
                         }
                     }
                 }
@@ -133,7 +133,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.GetPostsResponse"
+                            "$ref": "#/definitions/dto.GetPostsResponse"
                         }
                     }
                 }
@@ -156,7 +156,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CreatePostRequest"
+                            "$ref": "#/definitions/dto.CreatePostRequest"
                         }
                     },
                     {
@@ -171,7 +171,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.CreatePostResponse"
+                            "$ref": "#/definitions/dto.CreatePostResponse"
                         }
                     }
                 }
@@ -203,7 +203,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.EditPostRequest"
+                            "$ref": "#/definitions/dto.EditPostRequest"
                         }
                     },
                     {
@@ -218,7 +218,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.EditPostResponse"
+                            "$ref": "#/definitions/dto.EditPostResponse"
                         }
                     }
                 }
@@ -227,7 +227,7 @@
         "/api/posts/{postId}/images": {
             "post": {
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -239,8 +239,17 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "ID поста",
                         "name": "postId",
-                        "in": "path"
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Картинка",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
                     },
                     {
                         "type": "string",
@@ -254,7 +263,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.AddImageToPostResponse"
+                            "$ref": "#/definitions/dto.AddImageToPostResponse"
                         }
                     }
                 }
@@ -299,7 +308,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.DeleteImageFromPostResponse"
+                            "$ref": "#/definitions/dto.DeleteImageFromPostResponse"
                         }
                     }
                 }
@@ -331,7 +340,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.PublishPostRequest"
+                            "$ref": "#/definitions/dto.PublishPostRequest"
                         }
                     },
                     {
@@ -346,7 +355,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.PublishPostResponse"
+                            "$ref": "#/definitions/dto.PublishPostResponse"
                         }
                     }
                 }
@@ -354,15 +363,15 @@
         }
     },
     "definitions": {
-        "models.AddImageToPostResponse": {
+        "dto.AddImageToPostResponse": {
             "type": "object",
             "properties": {
-                "post_id": {
+                "image_id": {
                     "type": "string"
                 }
             }
         },
-        "models.CreatePostRequest": {
+        "dto.CreatePostRequest": {
             "type": "object",
             "properties": {
                 "author_id": {
@@ -379,7 +388,7 @@
                 }
             }
         },
-        "models.CreatePostResponse": {
+        "dto.CreatePostResponse": {
             "type": "object",
             "properties": {
                 "post_id": {
@@ -387,7 +396,7 @@
                 }
             }
         },
-        "models.DeleteImageFromPostResponse": {
+        "dto.DeleteImageFromPostResponse": {
             "type": "object",
             "properties": {
                 "post_id": {
@@ -395,7 +404,7 @@
                 }
             }
         },
-        "models.EditPostRequest": {
+        "dto.EditPostRequest": {
             "type": "object",
             "properties": {
                 "content": {
@@ -406,7 +415,7 @@
                 }
             }
         },
-        "models.EditPostResponse": {
+        "dto.EditPostResponse": {
             "type": "object",
             "properties": {
                 "post_id": {
@@ -414,18 +423,18 @@
                 }
             }
         },
-        "models.GetPostsResponse": {
+        "dto.GetPostsResponse": {
             "type": "object",
             "properties": {
                 "posts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Post"
+                        "$ref": "#/definitions/entities.Post"
                     }
                 }
             }
         },
-        "models.LoginUserRequest": {
+        "dto.LoginUserRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -436,7 +445,7 @@
                 }
             }
         },
-        "models.LoginUserResponse": {
+        "dto.LoginUserResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -450,7 +459,70 @@
                 }
             }
         },
-        "models.Post": {
+        "dto.PublishPostRequest": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PublishPostResponse": {
+            "type": "object",
+            "properties": {
+                "post_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RefreshUserTokenRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RefreshUserTokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RegistrateUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RegistrateUserResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "entities.Post": {
             "type": "object",
             "properties": {
                 "author_id": {
@@ -475,69 +547,6 @@
                     "type": "string"
                 },
                 "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.PublishPostRequest": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.PublishPostResponse": {
-            "type": "object",
-            "properties": {
-                "post_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.RefreshUserTokenRequest": {
-            "type": "object",
-            "properties": {
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.RefreshUserTokenResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.RegistrateUserRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.RegistrateUserResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "refresh_token": {
                     "type": "string"
                 }
             }

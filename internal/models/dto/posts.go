@@ -1,4 +1,6 @@
-package models
+package dto
+
+import "blog/internal/models/entities"
 
 // TODO: почистить от ненужных
 
@@ -12,15 +14,6 @@ type CreatePostRequest struct {
 type CreatePostResponse struct {
 	PostId string `json:"post_id"`
 }
-
-type AddImageToPostRequest struct {
-	PostId string
-}
-
-type AddImageToPostResponse struct {
-	PostId string `json:"post_id"`
-}
-
 type EditPostRequest struct {
 	AuthorId string `json:"-"`
 	PostId   string `json:"-"`
@@ -32,15 +25,6 @@ type EditPostResponse struct {
 	PostId string `json:"post_id"`
 }
 
-type DeleteImageFromPostRequest struct {
-	PostId  string `json:"-"`
-	ImageId string `json:"-"`
-}
-
-type DeleteImageFromPostResponse struct {
-	PostId string `json:"post_id"`
-}
-
 type PublishPostRequest struct {
 	AuthorId string `json:"-"`
 	PostId   string `json:"-"`
@@ -49,4 +33,12 @@ type PublishPostRequest struct {
 
 type PublishPostResponse struct {
 	PostId string `json:"post_id"`
+}
+
+type GetPostsByIdRequest struct {
+	UserId string
+}
+
+type GetPostsResponse struct {
+	Posts []entities.Post `json:"posts"`
 }

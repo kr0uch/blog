@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"blog/internal/models"
+	"blog/internal/models/entities"
 	"blog/pkg/consts"
 	"context"
 	"net/http"
@@ -9,7 +9,7 @@ import (
 )
 
 type AuthService interface {
-	AuthorizeUser(token string) (*models.User, error)
+	AuthorizeUser(token string) (*entities.User, error)
 }
 type AuthMiddlewareHandler struct {
 	srv AuthService
