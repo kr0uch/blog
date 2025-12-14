@@ -13,6 +13,8 @@ func NewAuthRouter(repo *repository.BlogRepository) (*http.ServeMux, *service.Au
 	router := http.NewServeMux()
 
 	router.HandleFunc("POST /auth/register", controller.RegistrateUser)
+	router.HandleFunc("POST /auth/login", controller.LoginUser)
+	router.HandleFunc("POST /auth/refresh-token", controller.RefreshUserToken)
 
 	return router, srv
 }
