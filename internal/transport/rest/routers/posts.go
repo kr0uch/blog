@@ -3,12 +3,15 @@ package routers
 import (
 	"blog/internal/repository"
 	"blog/internal/service"
+	"blog/internal/storage/minio"
 	"blog/internal/transport/rest/controllers"
 	"net/http"
 )
 
-func NewPostsRouter(repo *repository.BlogRepository) *http.ServeMux {
-	srv := service.NewPostsService(repo, "secret")
+// TODO: repo2 пофиксить
+
+func NewPostsRouter(repo *repository.BlogRepository, minio *minio.MinioClient) *http.ServeMux {
+	srv := service.NewPostsService(repo, minio, "secret", "data")
 	controller := controllers.NewPostsController(srv)
 	router := http.NewServeMux()
 
@@ -17,6 +20,7 @@ func NewPostsRouter(repo *repository.BlogRepository) *http.ServeMux {
 	router.HandleFunc("PUT /posts/{postId}", controller.EditPost)
 	router.HandleFunc("DELETE /posts/{postId}/images/{imageId}", controller.DeleteImageFromPost)
 	router.HandleFunc("PATCH /posts/{postId}/status", controller.PublishPost)
+	router.HandleFunc("GET /posts", controller.ViewPosts)
 
 	return router
 }

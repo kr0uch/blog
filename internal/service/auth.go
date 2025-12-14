@@ -1,7 +1,8 @@
 package service
 
 import (
-	"blog/internal/models"
+	"blog/internal/models/dto"
+	"blog/internal/models/entities"
 	"blog/pkg/consts"
 	"blog/pkg/consts/errors"
 	"blog/pkg/utils/hash"
@@ -13,10 +14,10 @@ import (
 )
 
 type AuthBlogRepository interface {
-	CreateUser(email, passwordHash, role, refreshToken string, refreshTokenExpiryTime time.Time) (*models.User, error)
-	GetUserByEmail(email string) (*models.User, error)
-	GetUserByRefreshToken(refreshToken string) (*models.User, error)
-	GetUserById(userId string) (*models.User, error)
+	CreateUser(email, passwordHash, role, refreshToken string, refreshTokenExpiryTime time.Time) (*entities.User, error)
+	GetUserByEmail(email string) (*entities.User, error)
+	GetUserByRefreshToken(refreshToken string) (*entities.User, error)
+	GetUserById(userId string) (*entities.User, error)
 	UpdateRefreshToken(userId, refreshToken string) error
 }
 
@@ -32,7 +33,7 @@ func NewAuthService(repo AuthBlogRepository, secret string) *AuthService {
 	}
 }
 
-func (s *AuthService) RegistrateUser(user *models.RegistrateUserRequest) (*models.RegistrateUserResponse, error) {
+func (s *AuthService) RegistrateUser(user *dto.RegistrateUserRequest) (*dto.RegistrateUserResponse, error) {
 	if !mail.IsValidEmail(user.Email) {
 		return nil, errors.ErrEmailInvalid
 	}
@@ -60,7 +61,7 @@ func (s *AuthService) RegistrateUser(user *models.RegistrateUserRequest) (*model
 
 	accessToken := jwt.NewAccessToken(newUser.UserId, s.secret)
 
-	responseUser := &models.RegistrateUserResponse{
+	responseUser := &dto.RegistrateUserResponse{
 		Id:           newUser.UserId,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -69,7 +70,7 @@ func (s *AuthService) RegistrateUser(user *models.RegistrateUserRequest) (*model
 	return responseUser, nil
 }
 
-func (s *AuthService) LoginUser(user *models.LoginUserRequest) (*models.LoginUserResponse, error) {
+func (s *AuthService) LoginUser(user *dto.LoginUserRequest) (*dto.LoginUserResponse, error) {
 	if !mail.IsValidEmail(user.Email) {
 		return nil, errors.ErrEmailInvalid
 	}
@@ -98,7 +99,7 @@ func (s *AuthService) LoginUser(user *models.LoginUserRequest) (*models.LoginUse
 
 	accessToken := jwt.NewAccessToken(newUser.UserId, s.secret)
 
-	responseUser := &models.LoginUserResponse{
+	responseUser := &dto.LoginUserResponse{
 		Id:           newUser.UserId,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -106,7 +107,7 @@ func (s *AuthService) LoginUser(user *models.LoginUserRequest) (*models.LoginUse
 	return responseUser, nil
 }
 
-func (s *AuthService) RefreshUserToken(token *models.RefreshUserTokenRequest) (*models.RefreshUserTokenResponse, error) {
+func (s *AuthService) RefreshUserToken(token *dto.RefreshUserTokenRequest) (*dto.RefreshUserTokenResponse, error) {
 	_, err := jwt.ValidateToken(token.RefreshToken, s.secret)
 	if err != nil {
 		return nil, err
@@ -119,14 +120,14 @@ func (s *AuthService) RefreshUserToken(token *models.RefreshUserTokenRequest) (*
 
 	accessToken := jwt.NewAccessToken(newUser.UserId, s.secret)
 
-	responseToken := &models.RefreshUserTokenResponse{
+	responseToken := &dto.RefreshUserTokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: token.RefreshToken,
 	}
 	return responseToken, nil
 }
 
-func (s *AuthService) AuthorizeUser(token string) (*models.User, error) {
+func (s *AuthService) AuthorizeUser(token string) (*entities.User, error) {
 	claims, err := jwt.ValidateToken(token, s.secret)
 	if err != nil {
 		return nil, err

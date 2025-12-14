@@ -1,16 +1,16 @@
 package controllers
 
 import (
-	"blog/internal/models"
+	"blog/internal/models/dto"
 	"encoding/json"
 	"log"
 	"net/http"
 )
 
 type AuthService interface {
-	RegistrateUser(user *models.RegistrateUserRequest) (*models.RegistrateUserResponse, error)
-	LoginUser(user *models.LoginUserRequest) (*models.LoginUserResponse, error)
-	RefreshUserToken(token *models.RefreshUserTokenRequest) (*models.RefreshUserTokenResponse, error)
+	RegistrateUser(user *dto.RegistrateUserRequest) (*dto.RegistrateUserResponse, error)
+	LoginUser(user *dto.LoginUserRequest) (*dto.LoginUserResponse, error)
+	RefreshUserToken(token *dto.RefreshUserTokenRequest) (*dto.RefreshUserTokenResponse, error)
 }
 type AuthController struct {
 	srv AuthService
@@ -27,11 +27,11 @@ func NewAuthRouter(srv AuthService) *AuthController {
 // @Tags Роли пользователей и аутентификация
 // @Accept json
 // @Produce json
-// @Param request body models.RegistrateUserRequest true "Данные пользователя"
-// @Success 200 {object} models.RegistrateUserResponse
+// @Param request body dto.RegistrateUserRequest true "Данные пользователя"
+// @Success 200 {object} dto.RegistrateUserResponse
 // @Router /api/auth/register [post]
 func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) {
-	var request models.RegistrateUserRequest
+	var request dto.RegistrateUserRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		log.Println(err)
@@ -42,7 +42,7 @@ func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) 
 	response, err := c.srv.RegistrateUser(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(models.ErrorResponse{Error: err.Error()})
+		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
@@ -65,11 +65,11 @@ func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) 
 // @Tags Роли пользователей и аутентификация
 // @Accept json
 // @Produce json
-// @Param request body models.LoginUserRequest true "Данные пользователя"
-// @Success 200 {object} models.LoginUserResponse
+// @Param request body dto.LoginUserRequest true "Данные пользователя"
+// @Success 200 {object} dto.LoginUserResponse
 // @Router /api/auth/login [post]
 func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
-	var request models.LoginUserRequest
+	var request dto.LoginUserRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		log.Println(err)
@@ -80,7 +80,7 @@ func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	response, err := c.srv.LoginUser(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(models.ErrorResponse{Error: err.Error()})
+		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
@@ -104,11 +104,11 @@ func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
 // @Tags Роли пользователей и аутентификация
 // @Accept json
 // @Produce json
-// @Param request body models.RefreshUserTokenRequest true "Данные пользователя"
-// @Success 200 {object} models.RefreshUserTokenResponse
+// @Param request body dto.RefreshUserTokenRequest true "Данные пользователя"
+// @Success 200 {object} dto.RefreshUserTokenResponse
 // @Router /api/auth/refresh-token [post]
 func (c *AuthController) RefreshUserToken(w http.ResponseWriter, r *http.Request) {
-	var request models.RefreshUserTokenRequest
+	var request dto.RefreshUserTokenRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		log.Println(err)
@@ -119,7 +119,7 @@ func (c *AuthController) RefreshUserToken(w http.ResponseWriter, r *http.Request
 	response, err := c.srv.RefreshUserToken(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(models.ErrorResponse{Error: err.Error()})
+		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
