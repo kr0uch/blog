@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-func NewAuthRouter(repo *repository.BlogRepository) (*http.ServeMux, *service.AuthService) {
-	srv := service.NewAuthService(repo, "secret")
+func NewAuthRouter(repo *repository.BlogRepository, secret string) (*http.ServeMux, *service.AuthService) {
+	srv := service.NewAuthService(repo, secret)
 	controller := controllers.NewAuthRouter(srv)
 	router := http.NewServeMux()
 

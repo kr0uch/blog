@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"blog/internal/models/dto"
+	"blog/pkg/consts/errors"
 	"encoding/json"
+	stderr "errors"
 	"log"
 	"net/http"
 )
@@ -29,23 +31,27 @@ func NewAuthRouter(srv AuthService) *AuthController {
 // @Produce json
 // @Param request body dto.RegistrateUserRequest true "Данные пользователя"
 // @Success 200 {object} dto.RegistrateUserResponse
+// @Failure 403 {string} errors.ErrUserAlreadyExists "user already exists"
+// @Failure 400 {string} errors.ErrInvalidEmail "invalid email"
 // @Router /api/auth/register [post]
 func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) {
 	var request dto.RegistrateUserRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 
 	response, err := c.srv.RegistrateUser(&request)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
+		switch {
+		case stderr.Is(err, errors.ErrUserAlreadyExists):
+			http.Error(w, err.Error(), http.StatusForbidden)
+		case stderr.Is(err, errors.ErrInvalidEmail):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
 		}
 		return
 	}
@@ -55,7 +61,7 @@ func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -67,24 +73,24 @@ func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) 
 // @Produce json
 // @Param request body dto.LoginUserRequest true "Данные пользователя"
 // @Success 200 {object} dto.LoginUserResponse
+// @Failure 403 {string} errors.ErrInvalidEmailOrPassword
 // @Router /api/auth/login [post]
 func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var request dto.LoginUserRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 
 	response, err := c.srv.LoginUser(&request)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+		switch {
+		case stderr.Is(err, errors.ErrInvalidEmailOrPassword):
+			http.Error(w, err.Error(), http.StatusForbidden)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
 		}
 		return
 	}
@@ -94,7 +100,7 @@ func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -106,24 +112,24 @@ func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body dto.RefreshUserTokenRequest true "Данные пользователя"
 // @Success 200 {object} dto.RefreshUserTokenResponse
+// @Failure 400 {string} errors.ErrInvalidRefreshToken
 // @Router /api/auth/refresh-token [post]
 func (c *AuthController) RefreshUserToken(w http.ResponseWriter, r *http.Request) {
 	var request dto.RefreshUserTokenRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 
 	response, err := c.srv.RefreshUserToken(&request)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+		switch {
+		case stderr.Is(err, errors.ErrInvalidRefreshToken):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
 		}
 		return
 	}
@@ -132,7 +138,7 @@ func (c *AuthController) RefreshUserToken(w http.ResponseWriter, r *http.Request
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }

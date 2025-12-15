@@ -2,17 +2,15 @@ package dto
 
 import "blog/internal/models/entities"
 
-// TODO: почистить от ненужных
-
 type CreatePostRequest struct {
-	AuthorId       string `json:"author_id"`
+	AuthorId       string `json:"-"`
 	IdempotencyKey string `json:"idempotency_key"`
 	Title          string `json:"title"`
 	Content        string `json:"content"`
 }
 
 type CreatePostResponse struct {
-	PostId string `json:"post_id"`
+	Message string `json:"message"`
 }
 type EditPostRequest struct {
 	AuthorId string `json:"-"`
@@ -22,7 +20,7 @@ type EditPostRequest struct {
 }
 
 type EditPostResponse struct {
-	PostId string `json:"post_id"`
+	Message string `json:"message"`
 }
 
 type PublishPostRequest struct {
@@ -32,11 +30,11 @@ type PublishPostRequest struct {
 }
 
 type PublishPostResponse struct {
-	PostId string `json:"post_id"`
+	Message string `json:"message"`
 }
 
 type GetPostsByIdRequest struct {
-	UserId string
+	UserId string `json:"-"`
 }
 
 type GetPostsResponse struct {

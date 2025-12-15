@@ -26,7 +26,7 @@ func NewRefreshToken(email string, secret string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func ValidateToken(tokenString string, secret string) (*jwt.MapClaims, error) { //TODO: переписать exp не как float а как timestamp
+func ValidateToken(tokenString string, secret string) (*jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

@@ -1,10 +1,5 @@
 package dto
 
-//TODO: почистить от ненужных
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
 type RegistrateUserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -12,8 +7,8 @@ type RegistrateUserRequest struct {
 }
 
 type RegistrateUserResponse struct {
-	Id           string `json:"id"`
-	AccessToken  string `json:"access_token"`
+	Message      string `json:"message"`
+	AccessToken  string `json:"-"`
 	RefreshToken string `json:"refresh_token"`
 }
 
@@ -23,8 +18,8 @@ type LoginUserRequest struct {
 }
 
 type LoginUserResponse struct {
-	Id           string `json:"user_id"`
-	AccessToken  string `json:"access_token"`
+	Message      string `json:"message"`
+	AccessToken  string `json:"-"`
 	RefreshToken string `json:"refresh_token"`
 }
 
@@ -33,6 +28,7 @@ type RefreshUserTokenRequest struct {
 }
 
 type RefreshUserTokenResponse struct {
-	AccessToken  string `json:"access_token"`
+	Message      string `json:"message"`
+	AccessToken  string `json:"-"`
 	RefreshToken string `json:"refresh_token"`
 }
