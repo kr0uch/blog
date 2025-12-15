@@ -8,6 +8,7 @@ import (
 	"blog/pkg/utils/hash"
 	"blog/pkg/utils/jwt"
 	"blog/pkg/utils/mail"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,11 +36,11 @@ func NewAuthService(repo AuthBlogRepository, secret string) *AuthService {
 
 func (s *AuthService) RegistrateUser(user *dto.RegistrateUserRequest) (*dto.RegistrateUserResponse, error) {
 	if !mail.IsValidEmail(user.Email) {
-		return nil, errors.ErrEmailInvalid
+		return nil, errors.ErrInvalidEmail
 	}
 
 	if user.Role != consts.AuthorRole && user.Role != consts.ReaderRole {
-		return nil, errors.ErrRoleInvalid
+		return nil, errors.ErrInvalidRole
 	}
 
 	passwordHash, err := hash.HashString(user.Password)
@@ -61,8 +62,13 @@ func (s *AuthService) RegistrateUser(user *dto.RegistrateUserRequest) (*dto.Regi
 
 	accessToken := jwt.NewAccessToken(newUser.UserId, s.secret)
 
+	var message string
+	if newUser != nil {
+		message = "Registered successfully"
+	}
+
 	responseUser := &dto.RegistrateUserResponse{
-		Id:           newUser.UserId,
+		Message:      message,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}
@@ -72,7 +78,7 @@ func (s *AuthService) RegistrateUser(user *dto.RegistrateUserRequest) (*dto.Regi
 
 func (s *AuthService) LoginUser(user *dto.LoginUserRequest) (*dto.LoginUserResponse, error) {
 	if !mail.IsValidEmail(user.Email) {
-		return nil, errors.ErrEmailInvalid
+		return nil, errors.ErrInvalidEmail
 	}
 
 	newUser, err := s.repo.GetUserByEmail(user.Email)
@@ -99,8 +105,13 @@ func (s *AuthService) LoginUser(user *dto.LoginUserRequest) (*dto.LoginUserRespo
 
 	accessToken := jwt.NewAccessToken(newUser.UserId, s.secret)
 
+	var message string
+	if newUser != nil {
+		message = "Logged in successfully"
+	}
+
 	responseUser := &dto.LoginUserResponse{
-		Id:           newUser.UserId,
+		Message:      message,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}
@@ -110,7 +121,8 @@ func (s *AuthService) LoginUser(user *dto.LoginUserRequest) (*dto.LoginUserRespo
 func (s *AuthService) RefreshUserToken(token *dto.RefreshUserTokenRequest) (*dto.RefreshUserTokenResponse, error) {
 	_, err := jwt.ValidateToken(token.RefreshToken, s.secret)
 	if err != nil {
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInvalidRefreshToken
 	}
 
 	newUser, err := s.repo.GetUserByRefreshToken(token.RefreshToken)
@@ -120,7 +132,13 @@ func (s *AuthService) RefreshUserToken(token *dto.RefreshUserTokenRequest) (*dto
 
 	accessToken := jwt.NewAccessToken(newUser.UserId, s.secret)
 
+	var message string
+	if newUser != nil {
+		message = "Refresh tokens successfully"
+	}
+
 	responseToken := &dto.RefreshUserTokenResponse{
+		Message:      message,
 		AccessToken:  accessToken,
 		RefreshToken: token.RefreshToken,
 	}
@@ -130,6 +148,7 @@ func (s *AuthService) RefreshUserToken(token *dto.RefreshUserTokenRequest) (*dto
 func (s *AuthService) AuthorizeUser(token string) (*entities.User, error) {
 	claims, err := jwt.ValidateToken(token, s.secret)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 

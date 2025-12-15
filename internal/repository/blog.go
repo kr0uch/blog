@@ -2,9 +2,11 @@ package repository
 
 import (
 	"blog/internal/models/entities"
+	"blog/pkg/consts"
 	"blog/pkg/consts/errors"
 	"database/sql"
 	stderr "errors"
+	"log"
 	"time"
 
 	"github.com/lib/pq"
@@ -32,8 +34,10 @@ func (r *BlogRepository) CreateUser(email, passwordHash, role, refreshToken stri
 		if ok && pgErr.Code == "23505" {
 			return nil, errors.ErrUserAlreadyExists
 		}
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	return &user, nil
 }
 
@@ -46,7 +50,8 @@ func (r *BlogRepository) GetUserByEmail(email string) (*entities.User, error) {
 		if stderr.Is(err, sql.ErrNoRows) {
 			return nil, errors.ErrInvalidEmailOrPassword
 		}
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
 
 	return &user, nil
@@ -60,9 +65,10 @@ func (r *BlogRepository) GetUserByRefreshToken(refreshToken string) (*entities.U
 		Scan(&user.UserId, &user.Email, &user.PasswordHash, &user.Role, &user.RefreshToken, &user.RefreshTokenExpiryTime)
 	if err != nil {
 		if stderr.Is(err, sql.ErrNoRows) {
-			return nil, errors.ErrInvalidEmailOrPassword
+			return nil, errors.ErrInvalidRefreshToken
 		}
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
 
 	return &user, nil
@@ -78,8 +84,10 @@ func (r *BlogRepository) GetUserById(userId string) (*entities.User, error) {
 		if stderr.Is(err, sql.ErrNoRows) {
 			return nil, errors.ErrInvalidAccessToken
 		}
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	return &user, nil
 }
 
@@ -87,8 +95,13 @@ func (r *BlogRepository) UpdateRefreshToken(userId, refreshToken string) error {
 	query := `UPDATE users SET refresh_token = $1 WHERE user_id = $2`
 	_, err := r.DB.Exec(query, refreshToken, userId)
 	if err != nil {
-		return err
+		if stderr.Is(err, sql.ErrNoRows) {
+			return errors.ErrInvalidUserId
+		}
+		log.Println(err)
+		return errors.ErrInternalServerError
 	}
+
 	return nil
 }
 
@@ -103,8 +116,10 @@ func (r *BlogRepository) CreatePost(authorId, idempotencyKey, title, content, st
 		if ok && pgErr.Code == "23505" {
 			return nil, errors.ErrInvalidIdempotencyKey
 		}
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	return &post, nil
 }
 
@@ -117,7 +132,8 @@ func (r *BlogRepository) GetPostById(postId string) (*entities.Post, error) {
 		if stderr.Is(err, sql.ErrNoRows) {
 			return nil, errors.ErrInvalidPostId
 		}
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
 
 	return &post, nil
@@ -130,54 +146,108 @@ func (r *BlogRepository) EditPost(postId, authorId, idempotencyKey, title, conte
 	err := r.DB.QueryRow(query, authorId, idempotencyKey, title, content, status, createdAt, updatedAt, postId).
 		Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
 	if err != nil {
-		return nil, err
+		if stderr.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrInvalidPostId
+		}
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	return &post, nil
 }
 
-func (r *BlogRepository) GetPostsById(userId string) ([]*entities.Post, error) {
+func (r *BlogRepository) GetPostsByUserId(userId string) ([]*entities.Post, error) {
 	var posts []*entities.Post
+
 	query := `SELECT * FROM posts WHERE author_id = $1`
 	rows, err := r.DB.Query(query, userId)
 	if err != nil {
-		return nil, err
+		if stderr.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrInvalidPostId
+		}
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	for rows.Next() {
 		var post entities.Post
 		err = rows.Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
-			return nil, err
+			log.Println(err)
+			return nil, errors.ErrInternalServerError
+		}
+		query = `SELECT * FROM images WHERE post_id = $1`
+		imageRows, err := r.DB.Query(query, post.PostId)
+		if err != nil {
+			log.Println(err)
+			return nil, errors.ErrInternalServerError
+		}
+		for imageRows.Next() {
+			var image entities.Image
+			err = imageRows.Scan(&image.ImageId, &image.PostId, &image.ImageURL, &image.CreatedAt)
+			if err != nil {
+				log.Println(err)
+				return nil, errors.ErrInternalServerError
+			}
+			post.Images = append(post.Images, image)
 		}
 		posts = append(posts, &post)
 	}
+
 	return posts, nil
 }
 
 func (r *BlogRepository) GetAllPosts() ([]*entities.Post, error) {
 	var posts []*entities.Post
+
 	query := `SELECT * FROM posts WHERE status = $1`
-	rows, err := r.DB.Query(query, "Published")
+	rows, err := r.DB.Query(query, consts.PublishedState)
 	if err != nil {
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	for rows.Next() {
 		var post entities.Post
 		err = rows.Scan(&post.PostId, &post.AuthorId, &post.IdempotencyKey, &post.Title, &post.Content, &post.Status, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
-			return nil, err
+			log.Println(err)
+			return nil, errors.ErrInternalServerError
+		}
+		query = `SELECT * FROM images WHERE post_id = $1`
+		imageRows, err := r.DB.Query(query, post.PostId)
+		if err != nil {
+			log.Println(err)
+			return nil, errors.ErrInternalServerError
+		}
+		for imageRows.Next() {
+			var image entities.Image
+			err = imageRows.Scan(&image.ImageId, &image.PostId, &image.ImageURL, &image.CreatedAt)
+			if err != nil {
+				log.Println(err)
+				return nil, errors.ErrInternalServerError
+			}
+			post.Images = append(post.Images, image)
 		}
 		posts = append(posts, &post)
 	}
+
 	return posts, nil
 }
 
 func (r *BlogRepository) AddImage(postId, imageURL string, createdAt time.Time) (*entities.Image, error) {
 	var image entities.Image
+
 	query := `INSERT INTO images (post_id, image_url, created_at) VALUES ($1, $2, $3) RETURNING *`
 	err := r.DB.QueryRow(query, postId, imageURL, createdAt).Scan(&image.ImageId, &image.PostId, &image.ImageURL, &image.CreatedAt)
 	if err != nil {
-		return nil, err
+		if stderr.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrInvalidPostId
+		}
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	return &image, nil
 }
 
@@ -185,22 +255,31 @@ func (r *BlogRepository) SetImageURLById(imageId, URL string) error {
 	query := `UPDATE images SET image_url = $1 WHERE image_id = $2`
 	_, err := r.DB.Exec(query, URL, imageId)
 	if err != nil {
-		return err
+		if stderr.Is(err, sql.ErrNoRows) {
+			return errors.ErrInvalidImageId
+		}
+		log.Println(err)
+		return errors.ErrInternalServerError
 	}
+
 	return nil
 }
 
 func (r *BlogRepository) GetImageById(imageId string) (*entities.Image, error) {
 	var image entities.Image
+
 	query := `SELECT * FROM images WHERE image_id = $1`
 	row := r.DB.QueryRow(query, imageId)
+
 	err := row.Scan(&image.ImageId, &image.PostId, &image.ImageURL, &image.CreatedAt)
 	if err != nil {
 		if stderr.Is(err, sql.ErrNoRows) {
 			return nil, errors.ErrInvalidImageId
 		}
-		return nil, err
+		log.Println(err)
+		return nil, errors.ErrInternalServerError
 	}
+
 	return &image, nil
 }
 
@@ -208,7 +287,12 @@ func (r *BlogRepository) DeleteImageById(imageId string) error {
 	query := `DELETE FROM images WHERE image_id = $1`
 	_, err := r.DB.Exec(query, imageId)
 	if err != nil {
-		return err
+		if stderr.Is(err, sql.ErrNoRows) {
+			return errors.ErrInvalidImageId
+		}
+		log.Println(err)
+		return errors.ErrInternalServerError
 	}
+
 	return nil
 }

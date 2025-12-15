@@ -8,10 +8,8 @@ import (
 	"net/http"
 )
 
-// TODO: repo2 пофиксить
-
 func NewPostsRouter(repo *repository.BlogRepository, minio *minio.MinioClient) *http.ServeMux {
-	srv := service.NewPostsService(repo, minio, "secret", "data")
+	srv := service.NewPostsService(repo, minio, minio.Bucket)
 	controller := controllers.NewPostsController(srv)
 	router := http.NewServeMux()
 

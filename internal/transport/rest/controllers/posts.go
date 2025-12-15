@@ -4,7 +4,9 @@ import (
 	"blog/internal/models/dto"
 	"blog/internal/models/entities"
 	"blog/pkg/consts"
+	"blog/pkg/consts/errors"
 	"encoding/json"
+	stderr "errors"
 	"log"
 	"net/http"
 )
@@ -29,7 +31,15 @@ func NewPostsController(srv PostsService) *PostsController {
 	}
 }
 
-//TODO: коды ответов переделать + ошибки через http.Error
+func getUserFromCtx(r *http.Request) (*entities.User, error) {
+	ctx := r.Context()
+	ctxUser := ctx.Value(consts.CtxUser)
+	user, ok := ctxUser.(*entities.User)
+	if !ok {
+		return nil, errors.ErrNoPermission
+	}
+	return user, nil
+}
 
 // CreatePost godoc
 // @Summary Создать пост
@@ -39,27 +49,26 @@ func NewPostsController(srv PostsService) *PostsController {
 // @Param request body dto.CreatePostRequest true "Данные поста"
 // @Param Authorization header string true "Токен авторизации"
 // @Success 200 {object} dto.CreatePostResponse
+// @Failure 409 {string} errors.ErrInvalidIdempotencyKey "invalid idempotency key"
+// @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts [post]
 func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
-	user, ok := ctxUser.(*entities.User)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	user, err := getUserFromCtx(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	if user.Role != consts.AuthorRole {
-		w.WriteHeader(http.StatusUnauthorized)
+		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
 
 	var post dto.CreatePostRequest
 
-	err := json.NewDecoder(r.Body).Decode(&post)
+	err = json.NewDecoder(r.Body).Decode(&post)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
 		log.Println(err)
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -67,21 +76,19 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	response, err := c.srv.CreatePost(&post)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println(err)
-		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+		switch {
+		case stderr.Is(err, errors.ErrInvalidIdempotencyKey):
+			http.Error(w, err.Error(), http.StatusConflict)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
 		}
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -95,31 +102,31 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 // @Param file formData file true "Картинка"
 // @Param Authorization header string true "Токен авторизации"
 // @Success 200 {object} dto.AddImageToPostResponse
+// @Failure 404 {string} errors.ErrPostNotFound "post not found"
+// @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId}/images [post]
 func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
-	user, ok := ctxUser.(*entities.User)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	user, err := getUserFromCtx(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
 	}
+
 	if user.Role != consts.AuthorRole {
-		w.WriteHeader(http.StatusUnauthorized)
+		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
 
 	var rows dto.AddImageToPostRequest
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
 		log.Println(err)
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 
-	file, handler, err := r.FormFile("file")
+	file, handler, err := r.FormFile("image")
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println("formFile getting", err)
+		log.Println(err)
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
@@ -128,18 +135,22 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 	rows.File = file
 	rows.Handler = handler
 
-	image, err := c.srv.AddImage(&rows)
+	response, err := c.srv.AddImage(&rows)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println(err)
+		switch {
+		case stderr.Is(err, errors.ErrPostNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
+		}
 		return
 	}
 	err = json.NewEncoder(w).Encode(dto.AddImageToPostResponse{
-		ImageId: image.ImageId,
+		Message: response.Message,
 	})
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -153,45 +164,45 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 // @Param request body dto.EditPostRequest true "Новое название поста"
 // @Param Authorization header string true "Токен авторизации"
 // @Success 200 {object} dto.EditPostResponse
+// @Failure 404 {string} errors.ErrPostNotFound "post not found"
+// @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId} [put]
 func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
-	user, ok := ctxUser.(*entities.User)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if user.Role != consts.AuthorRole {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	var rows dto.EditPostRequest
-	err := json.NewDecoder(r.Body).Decode(&rows)
+	user, err := getUserFromCtx(r)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println(err)
+		http.Error(w, err.Error(), http.StatusForbidden)
+	}
+
+	if user.Role != consts.AuthorRole {
+		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
+		return
+	}
+
+	var rows dto.EditPostRequest
+
+	err = json.NewDecoder(r.Body).Decode(&rows)
+	if err != nil {
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 	rows.PostId = r.PathValue("postId")
 	rows.AuthorId = user.UserId
 
-	post, err := c.srv.EditPost(&rows)
+	response, err := c.srv.EditPost(&rows)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println(err)
-		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+		switch {
+		case stderr.Is(err, errors.ErrPostNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
 		}
 		return
 	}
-	err = json.NewEncoder(w).Encode(post)
+
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -205,17 +216,17 @@ func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
 // @Param imageId path string true "ID картинки"
 // @Param Authorization header string true "Токен авторизации"
 // @Success 200 {object} dto.DeleteImageFromPostResponse
+// @Failure 404 {string} errors.ErrPostOrImageNotFound "post or image not found"
+// @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId}/images/{imageId} [delete]
 func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
-	user, ok := ctxUser.(*entities.User)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	user, err := getUserFromCtx(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
 	}
+
 	if user.Role != consts.AuthorRole {
-		w.WriteHeader(http.StatusUnauthorized)
+		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -223,21 +234,23 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 	rows.PostId = r.PathValue("postId")
 	rows.ImageId = r.PathValue("imageId")
 
-	postId, err := c.srv.DeleteImage(&rows)
+	response, err := c.srv.DeleteImage(&rows)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println(err)
+		switch {
+		case stderr.Is(err, errors.ErrPostOrImageNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
+		}
 		return
 	}
-	err = json.NewEncoder(w).Encode(&postId)
+	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
-
-//TODO: Обернуть получение юзера из контекста в функцию
 
 // PublishPost godoc
 // @Summary Опубликовать пост
@@ -248,47 +261,47 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 // @Param status body dto.PublishPostRequest true "Статус поста"
 // @Param Authorization header string true "Токен авторизации"
 // @Success 200 {object} dto.PublishPostResponse
+// @Failure 400 {string} errors.ErrInvalidPostStatus "invalid post status"
+// @Failure 404 {string} errors.ErrPostNotFound "post not found"
+// @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId}/status [patch]
 func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
-	user, ok := ctxUser.(*entities.User)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	user, err := getUserFromCtx(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	if user.Role != consts.AuthorRole {
-		w.WriteHeader(http.StatusUnauthorized)
+		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
 
 	var rows dto.PublishPostRequest
-	err := json.NewDecoder(r.Body).Decode(&rows)
+	err = json.NewDecoder(r.Body).Decode(&rows)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
 		log.Println(err)
+		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 	rows.PostId = r.PathValue("postId")
 	rows.AuthorId = user.UserId
 
-	post, err := c.srv.PublishPost(&rows)
+	response, err := c.srv.PublishPost(&rows)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println(err)
-		err = json.NewEncoder(w).Encode(dto.ErrorResponse{Error: err.Error()})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+		switch {
+		case stderr.Is(err, errors.ErrInvalidPostStatus):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case stderr.Is(err, errors.ErrPostNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, err.Error(), http.StatusForbidden)
 		}
 		return
 	}
-	err = json.NewEncoder(w).Encode(post)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -302,12 +315,9 @@ func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} dto.GetPostsResponse
 // @Router /api/posts [get]
 func (c *PostsController) ViewPosts(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
-	user, ok := ctxUser.(*entities.User)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	user, err := getUserFromCtx(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	switch user.Role {
@@ -316,29 +326,31 @@ func (c *PostsController) ViewPosts(w http.ResponseWriter, r *http.Request) {
 	case consts.ReaderRole:
 		c.ReaderView(w, r)
 	default:
-		w.WriteHeader(http.StatusForbidden)
+		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
 }
 
 func (c *PostsController) AuthorView(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
-	user, _ := ctxUser.(*entities.User)
+	user, err := getUserFromCtx(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+	}
 
 	var posts dto.GetPostsByIdRequest
+
 	posts.UserId = user.UserId
 	response, err := c.srv.ViewPostsById(&posts)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -346,15 +358,15 @@ func (c *PostsController) AuthorView(w http.ResponseWriter, r *http.Request) {
 func (c *PostsController) ReaderView(w http.ResponseWriter, r *http.Request) {
 	response, err := c.srv.ViewAllPosts()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }

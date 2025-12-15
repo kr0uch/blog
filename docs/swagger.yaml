@@ -2,13 +2,11 @@ basePath: /
 definitions:
   dto.AddImageToPostResponse:
     properties:
-      image_id:
+      message:
         type: string
     type: object
   dto.CreatePostRequest:
     properties:
-      author_id:
-        type: string
       content:
         type: string
       idempotency_key:
@@ -18,12 +16,12 @@ definitions:
     type: object
   dto.CreatePostResponse:
     properties:
-      post_id:
+      message:
         type: string
     type: object
   dto.DeleteImageFromPostResponse:
     properties:
-      post_id:
+      message:
         type: string
     type: object
   dto.EditPostRequest:
@@ -35,7 +33,7 @@ definitions:
     type: object
   dto.EditPostResponse:
     properties:
-      post_id:
+      message:
         type: string
     type: object
   dto.GetPostsResponse:
@@ -54,11 +52,9 @@ definitions:
     type: object
   dto.LoginUserResponse:
     properties:
-      access_token:
+      message:
         type: string
       refresh_token:
-        type: string
-      user_id:
         type: string
     type: object
   dto.PublishPostRequest:
@@ -68,7 +64,7 @@ definitions:
     type: object
   dto.PublishPostResponse:
     properties:
-      post_id:
+      message:
         type: string
     type: object
   dto.RefreshUserTokenRequest:
@@ -78,7 +74,7 @@ definitions:
     type: object
   dto.RefreshUserTokenResponse:
     properties:
-      access_token:
+      message:
         type: string
       refresh_token:
         type: string
@@ -94,11 +90,20 @@ definitions:
     type: object
   dto.RegistrateUserResponse:
     properties:
-      access_token:
-        type: string
-      id:
+      message:
         type: string
       refresh_token:
+        type: string
+    type: object
+  entities.Image:
+    properties:
+      created_at:
+        type: string
+      image_id:
+        type: string
+      image_url:
+        type: string
+      post_id:
         type: string
     type: object
   entities.Post:
@@ -111,6 +116,10 @@ definitions:
         type: string
       idempotency_key:
         type: string
+      images:
+        items:
+          $ref: '#/definitions/entities.Image'
+        type: array
       post_id:
         type: string
       status:
@@ -145,6 +154,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.LoginUserResponse'
+        "403":
+          description: Forbidden
+          schema:
+            type: string
       summary: Залогинить пользователя
       tags:
       - Роли пользователей и аутентификация
@@ -166,6 +179,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.RefreshUserTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
       summary: Обновить токен пользователя
       tags:
       - Роли пользователей и аутентификация
@@ -187,6 +204,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.RegistrateUserResponse'
+        "400":
+          description: invalid email
+          schema:
+            type: string
+        "403":
+          description: user already exists
+          schema:
+            type: string
       summary: Зарегистрировать пользователя
       tags:
       - Роли пользователей и аутентификация
@@ -232,6 +257,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.CreatePostResponse'
+        "403":
+          description: no permission
+          schema:
+            type: string
+        "409":
+          description: invalid idempotency key
+          schema:
+            type: string
       summary: Создать пост
       tags:
       - Управление постами
@@ -263,6 +296,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.EditPostResponse'
+        "403":
+          description: no permission
+          schema:
+            type: string
+        "404":
+          description: post not found
+          schema:
+            type: string
       summary: Редактировать пост
       tags:
       - Управление постами
@@ -293,6 +334,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.AddImageToPostResponse'
+        "403":
+          description: no permission
+          schema:
+            type: string
+        "404":
+          description: post not found
+          schema:
+            type: string
       summary: Добавить картинку к посту
       tags:
       - Управление постами
@@ -323,6 +372,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.DeleteImageFromPostResponse'
+        "403":
+          description: no permission
+          schema:
+            type: string
+        "404":
+          description: post or image not found
+          schema:
+            type: string
       summary: Удалить картинку из поста
       tags:
       - Управление постами
@@ -354,6 +411,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.PublishPostResponse'
+        "400":
+          description: invalid post status
+          schema:
+            type: string
+        "403":
+          description: no permission
+          schema:
+            type: string
+        "404":
+          description: post not found
+          schema:
+            type: string
       summary: Опубликовать пост
       tags:
       - Управление постами

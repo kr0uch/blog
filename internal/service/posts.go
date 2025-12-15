@@ -16,7 +16,8 @@ type PostsBlogRepository interface {
 	GetUserById(userId string) (*entities.User, error)
 	GetPostById(postId string) (*entities.Post, error)
 	EditPost(postId, authorId, idempotencyKey, title, content, status string, createdAt, updatedAt time.Time) (*entities.Post, error)
-	GetPostsById(userId string) ([]*entities.Post, error)
+
+	GetPostsByUserId(userId string) ([]*entities.Post, error)
 	GetAllPosts() ([]*entities.Post, error)
 
 	AddImage(postId, imageURL string, createdAt time.Time) (*entities.Image, error)
@@ -34,27 +35,30 @@ type MinioRepository interface {
 type PostsService struct {
 	repo   PostsBlogRepository
 	minio  MinioRepository
-	secret string //TODO: убрать
 	bucket string
 }
 
-func NewPostsService(repo PostsBlogRepository, minio MinioRepository, secret string, bucket string) *PostsService {
+func NewPostsService(repo PostsBlogRepository, minio MinioRepository, bucket string) *PostsService {
 	return &PostsService{
 		repo:   repo,
 		minio:  minio,
-		secret: secret,
 		bucket: bucket,
 	}
 }
 
 func (s *PostsService) CreatePost(post *dto.CreatePostRequest) (*dto.CreatePostResponse, error) {
-
 	newPost, err := s.repo.CreatePost(post.AuthorId, post.IdempotencyKey, post.Title, post.Content, consts.DraftState, time.Now(), time.Now())
 	if err != nil {
 		return nil, err
 	}
+
+	var message string
+	if newPost != nil {
+		message = "Post created successfully"
+	}
+
 	response := &dto.CreatePostResponse{
-		PostId: newPost.PostId,
+		Message: message,
 	}
 	return response, nil
 }
@@ -62,28 +66,36 @@ func (s *PostsService) CreatePost(post *dto.CreatePostRequest) (*dto.CreatePostR
 func (s *PostsService) EditPost(rows *dto.EditPostRequest) (*dto.EditPostResponse, error) {
 	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrPostNotFound
 	}
 	if post.AuthorId != rows.AuthorId {
 		return nil, errors.ErrInvalidUser
 	}
+
 	newPost, err := s.repo.EditPost(post.PostId, post.AuthorId, post.IdempotencyKey, rows.Title, rows.Content, post.Status, post.CreatedAt, time.Now())
 	if err != nil {
 		return nil, err
 	}
+
+	var message string
+	if newPost != nil {
+		message = "Post edited successfully"
+	}
+
 	response := &dto.EditPostResponse{
-		PostId: newPost.PostId,
+		Message: message,
 	}
 	return response, nil
 }
 
 func (s *PostsService) PublishPost(rows *dto.PublishPostRequest) (*dto.PublishPostResponse, error) {
 	if rows.Status != consts.PublishedState {
-		return nil, errors.ErrInvalidPostState
+		return nil, errors.ErrInvalidPostStatus
 	}
+
 	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrPostNotFound
 	}
 	if post.AuthorId != rows.AuthorId {
 		return nil, errors.ErrInvalidUser
@@ -93,14 +105,20 @@ func (s *PostsService) PublishPost(rows *dto.PublishPostRequest) (*dto.PublishPo
 	if err != nil {
 		return nil, err
 	}
+
+	var message string
+	if newPost != nil {
+		message = "Post published successfully"
+	}
+
 	response := &dto.PublishPostResponse{
-		PostId: newPost.PostId,
+		Message: message,
 	}
 	return response, nil
 }
 
 func (s *PostsService) ViewPostsById(rows *dto.GetPostsByIdRequest) (*dto.GetPostsResponse, error) {
-	posts, err := s.repo.GetPostsById(rows.UserId)
+	posts, err := s.repo.GetPostsByUserId(rows.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +147,11 @@ func (s *PostsService) AddImage(rows *dto.AddImageToPostRequest) (*dto.AddImageT
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
+	_, err := s.repo.GetPostById(rows.PostId)
+	if err != nil {
+		return nil, errors.ErrPostNotFound
+	}
+
 	image, err := s.repo.AddImage(rows.PostId, "not-set", time.Now())
 	if err != nil {
 		return nil, err
@@ -151,8 +174,13 @@ func (s *PostsService) AddImage(rows *dto.AddImageToPostRequest) (*dto.AddImageT
 		return nil, err
 	}
 
+	var message string
+	if image != nil {
+		message = "Image added successfully"
+	}
+
 	response := &dto.AddImageToPostResponse{
-		ImageId: image.ImageId,
+		Message: message,
 	}
 	return response, nil
 }
@@ -161,9 +189,14 @@ func (s *PostsService) DeleteImage(rows *dto.DeleteImageFromPostRequest) (*dto.D
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
+	_, err := s.repo.GetPostById(rows.PostId)
+	if err != nil {
+		return nil, errors.ErrPostOrImageNotFound
+	}
+
 	image, err := s.repo.GetImageById(rows.ImageId)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrPostOrImageNotFound
 	}
 
 	filename := fmt.Sprintf("%s/%s.%s", rows.PostId, image.ImageId, "png")
@@ -178,8 +211,13 @@ func (s *PostsService) DeleteImage(rows *dto.DeleteImageFromPostRequest) (*dto.D
 		return nil, err
 	}
 
+	var message string
+	if image != nil {
+		message = "Image deleted successfully"
+	}
+
 	response := &dto.DeleteImageFromPostResponse{
-		PostId: rows.PostId,
+		Message: message,
 	}
 	return response, nil
 }

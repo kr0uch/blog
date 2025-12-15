@@ -14,15 +14,14 @@ import (
 )
 
 type BlogServerConfig struct {
-	Port string `env:"PORT" env-default:"8080"`
+	Port   string `env:"PORT" env-default:"8080"`
+	Secret string `env:"SECRET" env-default:"secret"`
 }
 
 type BlogServer struct {
 	cfg    BlogServerConfig
 	server *http.Server
 }
-
-//TODO: repo2 пофиксить
 
 func NewBlogServer(cfg BlogServerConfig, minioClient *minio.MinioClient, db *postgre.DB) (*BlogServer, error) {
 	mainRouter := http.NewServeMux()
@@ -32,7 +31,7 @@ func NewBlogServer(cfg BlogServerConfig, minioClient *minio.MinioClient, db *pos
 
 	repo := repository.NewBlogRepository(db.DB)
 
-	authRouter, authService := routers.NewAuthRouter(repo)
+	authRouter, authService := routers.NewAuthRouter(repo, cfg.Secret)
 	postsRouter := routers.NewPostsRouter(repo, minioClient)
 
 	authMiddleware := middlewares.NewAuthMiddlewareHandler(authService).AuthMiddleware

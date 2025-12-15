@@ -5,15 +5,13 @@ import (
 	"mime/multipart"
 )
 
-//TODO: проверить везде json форму
-
 type AddImageToPostRequest struct {
-	PostId  string `json:"-"`
-	File    io.Reader
-	Handler *multipart.FileHeader
+	PostId  string                `json:"-"`
+	File    io.Reader             `json:"-"`
+	Handler *multipart.FileHeader `json:"-"`
 }
 type AddImageToPostResponse struct {
-	ImageId string `json:"image_id"`
+	Message string `json:"message"`
 }
 
 type DeleteImageFromPostRequest struct {
@@ -22,5 +20,5 @@ type DeleteImageFromPostRequest struct {
 }
 
 type DeleteImageFromPostResponse struct {
-	PostId string `json:"post_id"`
+	Message string `json:"message"`
 }

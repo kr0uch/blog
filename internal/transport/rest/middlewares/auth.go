@@ -25,25 +25,23 @@ func (m *AuthMiddlewareHandler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		if header == "" {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			//w.WriteHeader(http.StatusUnauthorized)
-			//unauthorized
+			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
 		}
 		token := strings.Split(header, " ")
 		if len(token) != 2 {
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
 		}
 
 		if token[0] != "Bearer" {
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
 		}
 
 		user, err := m.srv.AuthorizeUser(token[1])
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
 		}
 

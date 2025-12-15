@@ -44,6 +44,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.LoginUserResponse"
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -77,6 +83,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.RefreshUserTokenResponse"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -109,6 +121,18 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/dto.RegistrateUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid email",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "user already exists",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -179,6 +203,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.CreatePostResponse"
                         }
+                    },
+                    "403": {
+                        "description": "no permission",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "invalid idempotency key",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -226,6 +262,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.EditPostResponse"
                         }
+                    },
+                    "403": {
+                        "description": "no permission",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "post not found",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -271,6 +319,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.AddImageToPostResponse"
                         }
+                    },
+                    "403": {
+                        "description": "no permission",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "post not found",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -315,6 +375,18 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/dto.DeleteImageFromPostResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "no permission",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "post or image not found",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -363,6 +435,24 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.PublishPostResponse"
                         }
+                    },
+                    "400": {
+                        "description": "invalid post status",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "no permission",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "post not found",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -372,7 +462,7 @@ const docTemplate = `{
         "dto.AddImageToPostResponse": {
             "type": "object",
             "properties": {
-                "image_id": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -380,9 +470,6 @@ const docTemplate = `{
         "dto.CreatePostRequest": {
             "type": "object",
             "properties": {
-                "author_id": {
-                    "type": "string"
-                },
                 "content": {
                     "type": "string"
                 },
@@ -397,7 +484,7 @@ const docTemplate = `{
         "dto.CreatePostResponse": {
             "type": "object",
             "properties": {
-                "post_id": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -405,7 +492,7 @@ const docTemplate = `{
         "dto.DeleteImageFromPostResponse": {
             "type": "object",
             "properties": {
-                "post_id": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -424,7 +511,7 @@ const docTemplate = `{
         "dto.EditPostResponse": {
             "type": "object",
             "properties": {
-                "post_id": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -454,13 +541,10 @@ const docTemplate = `{
         "dto.LoginUserResponse": {
             "type": "object",
             "properties": {
-                "access_token": {
+                "message": {
                     "type": "string"
                 },
                 "refresh_token": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }
@@ -476,7 +560,7 @@ const docTemplate = `{
         "dto.PublishPostResponse": {
             "type": "object",
             "properties": {
-                "post_id": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -492,7 +576,7 @@ const docTemplate = `{
         "dto.RefreshUserTokenResponse": {
             "type": "object",
             "properties": {
-                "access_token": {
+                "message": {
                     "type": "string"
                 },
                 "refresh_token": {
@@ -517,13 +601,27 @@ const docTemplate = `{
         "dto.RegistrateUserResponse": {
             "type": "object",
             "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "id": {
+                "message": {
                     "type": "string"
                 },
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "entities.Image": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "image_id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "post_id": {
                     "type": "string"
                 }
             }
@@ -542,6 +640,12 @@ const docTemplate = `{
                 },
                 "idempotency_key": {
                     "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entities.Image"
+                    }
                 },
                 "post_id": {
                     "type": "string"
