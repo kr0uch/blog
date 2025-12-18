@@ -150,6 +150,7 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 	defer file.Close()
 
 	rows.PostId = r.PathValue("postId")
+	rows.AuthorId = user.UserId
 	rows.File = file
 	rows.Handler = handler
 
@@ -269,6 +270,7 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 
 	var rows dto.DeleteImageFromPostRequest
 	rows.PostId = r.PathValue("postId")
+	rows.AuthorId = user.UserId
 	rows.ImageId = r.PathValue("imageId")
 
 	response, err := c.srv.DeleteImage(r.Context(), &rows)
@@ -401,7 +403,7 @@ func (c *PostsController) AuthorView(w http.ResponseWriter, r *http.Request) {
 
 	var posts dto.GetPostsByIdRequest
 
-	posts.UserId = user.UserId
+	posts.AuthorId = user.UserId
 	response, err := c.srv.ViewPostsById(r.Context(), &posts)
 	if err != nil {
 		reqLogger.Error("Failed to view posts", zap.Error(err))

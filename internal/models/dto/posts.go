@@ -34,7 +34,7 @@ type PublishPostResponse struct {
 }
 
 type GetPostsByIdRequest struct {
-	UserId string `json:"-"`
+	AuthorId string `json:"-"`
 }
 
 type GetPostsResponse struct {

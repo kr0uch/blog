@@ -62,7 +62,7 @@ func (s *PostsService) CreatePost(ctx context.Context, post *dto.CreatePostReque
 
 	var message string
 	if newPost != nil {
-		message = "Post created successfully"
+		message = "post created successfully"
 	}
 
 	response := &dto.CreatePostResponse{
@@ -97,7 +97,7 @@ func (s *PostsService) EditPost(ctx context.Context, rows *dto.EditPostRequest) 
 
 	var message string
 	if newPost != nil {
-		message = "Post edited successfully"
+		message = "post edited successfully"
 	}
 
 	response := &dto.EditPostResponse{
@@ -137,7 +137,7 @@ func (s *PostsService) PublishPost(ctx context.Context, rows *dto.PublishPostReq
 
 	var message string
 	if newPost != nil {
-		message = "Post published successfully"
+		message = "post published successfully"
 	}
 
 	response := &dto.PublishPostResponse{
@@ -154,7 +154,7 @@ func (s *PostsService) ViewPostsById(ctx context.Context, rows *dto.GetPostsById
 
 	reqLogger.Info("View Posts By Id")
 
-	posts, err := s.repo.GetPostsByUserId(rows.UserId)
+	posts, err := s.repo.GetPostsByUserId(rows.AuthorId)
 	if err != nil {
 		reqLogger.Error("Failed to get posts by id", zap.Error(err))
 		return nil, err
@@ -199,10 +199,15 @@ func (s *PostsService) AddImage(ctx context.Context, rows *dto.AddImageToPostReq
 	minioCtx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	_, err := s.repo.GetPostById(rows.PostId)
+	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
 		reqLogger.Error("Failed to get post by id", zap.Error(err))
 		return nil, errors.ErrPostNotFound
+	}
+
+	if post.AuthorId != rows.AuthorId {
+		reqLogger.Error("Author id does not match", zap.String("AuthorId", rows.AuthorId))
+		return nil, errors.ErrNoPermission
 	}
 
 	image, err := s.repo.AddImage(rows.PostId, "not-set", time.Now())
@@ -233,7 +238,7 @@ func (s *PostsService) AddImage(ctx context.Context, rows *dto.AddImageToPostReq
 
 	var message string
 	if image != nil {
-		message = "Image added successfully"
+		message = "image added successfully"
 	}
 
 	response := &dto.AddImageToPostResponse{
@@ -253,10 +258,15 @@ func (s *PostsService) DeleteImage(ctx context.Context, rows *dto.DeleteImageFro
 	minioCtx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	_, err := s.repo.GetPostById(rows.PostId)
+	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
 		reqLogger.Error("Failed to get post by id", zap.Error(err))
 		return nil, errors.ErrPostOrImageNotFound
+	}
+
+	if rows.AuthorId != post.AuthorId {
+		reqLogger.Error("Author id does not match", zap.String("AuthorId", rows.AuthorId))
+		return nil, errors.ErrNoPermission
 	}
 
 	image, err := s.repo.GetImageById(rows.ImageId)
@@ -281,7 +291,7 @@ func (s *PostsService) DeleteImage(ctx context.Context, rows *dto.DeleteImageFro
 
 	var message string
 	if image != nil {
-		message = "Image deleted successfully"
+		message = "image deleted successfully"
 	}
 
 	response := &dto.DeleteImageFromPostResponse{
@@ -292,5 +302,3 @@ func (s *PostsService) DeleteImage(ctx context.Context, rows *dto.DeleteImageFro
 
 	return response, nil
 }
-
-//TODO: месаги сделать с маленькой буквы
