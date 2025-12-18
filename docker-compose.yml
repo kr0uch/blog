@@ -1,0 +1,67 @@
+services:
+  blog:
+    build:
+      context: .
+      dockerfile: dockerfiles/blog/Dockerfile
+    image: blog:latest
+    container_name: blog_container
+    env_file:
+      - .env
+    ports:
+      - "${PORT}:${PORT}"
+    networks:
+      - default
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_container
+    environment:
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    env_file:
+      - .env
+    volumes:
+      - ~/postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio_container
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    env_file:
+      - .env
+    volumes:
+      - minio-storage:/data
+      - minio-config:/root/.minio
+    networks:
+      - default
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+
+volumes:
+  minio-storage:
+  minio-config:
