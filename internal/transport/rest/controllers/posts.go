@@ -1,24 +1,27 @@
 package controllers
 
 import (
+	"blog/internal/logger"
 	"blog/internal/models/dto"
 	"blog/internal/models/entities"
 	"blog/pkg/consts"
 	"blog/pkg/consts/errors"
+	"context"
 	"encoding/json"
 	stderr "errors"
-	"log"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type PostsService interface {
-	CreatePost(post *dto.CreatePostRequest) (*dto.CreatePostResponse, error)
-	EditPost(rows *dto.EditPostRequest) (*dto.EditPostResponse, error)
-	PublishPost(post *dto.PublishPostRequest) (*dto.PublishPostResponse, error)
-	ViewPostsById(rows *dto.GetPostsByIdRequest) (*dto.GetPostsResponse, error)
-	ViewAllPosts() (*dto.GetPostsResponse, error)
-	AddImage(rows *dto.AddImageToPostRequest) (*dto.AddImageToPostResponse, error)
-	DeleteImage(rows *dto.DeleteImageFromPostRequest) (*dto.DeleteImageFromPostResponse, error)
+	CreatePost(ctx context.Context, post *dto.CreatePostRequest) (*dto.CreatePostResponse, error)
+	EditPost(ctx context.Context, rows *dto.EditPostRequest) (*dto.EditPostResponse, error)
+	PublishPost(ctx context.Context, post *dto.PublishPostRequest) (*dto.PublishPostResponse, error)
+	ViewPostsById(ctx context.Context, rows *dto.GetPostsByIdRequest) (*dto.GetPostsResponse, error)
+	ViewAllPosts(ctx context.Context) (*dto.GetPostsResponse, error)
+	AddImage(ctx context.Context, rows *dto.AddImageToPostRequest) (*dto.AddImageToPostResponse, error)
+	DeleteImage(ctx context.Context, rows *dto.DeleteImageFromPostRequest) (*dto.DeleteImageFromPostResponse, error)
 }
 
 type PostsController struct {
@@ -53,12 +56,18 @@ func getUserFromCtx(r *http.Request) (*entities.User, error) {
 // @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts [post]
 func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "CreatePost"))
+
+	reqLogger.Info("Create Post")
+
 	user, err := getUserFromCtx(r)
 	if err != nil {
+		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	if user.Role != consts.AuthorRole {
+		reqLogger.Error("User have no permission", zap.Error(err))
 		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
@@ -67,15 +76,16 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&post)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to decode request", zap.Error(err))
 		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 
 	post.AuthorId = user.UserId
 
-	response, err := c.srv.CreatePost(&post)
+	response, err := c.srv.CreatePost(r.Context(), &post)
 	if err != nil {
+		reqLogger.Error("Failed to create post", zap.Error(err))
 		switch {
 		case stderr.Is(err, errors.ErrInvalidIdempotencyKey):
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -87,10 +97,12 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	reqLogger.Info("CreatePost done")
 }
 
 // AddImageToPost godoc
@@ -106,26 +118,32 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId}/images [post]
 func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request) {
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "AddImageToPost"))
+
+	reqLogger.Info("Add Image To Post")
+
 	user, err := getUserFromCtx(r)
 	if err != nil {
+		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	if user.Role != consts.AuthorRole {
+		reqLogger.Error("User have no permission", zap.Error(err))
 		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
 
 	var rows dto.AddImageToPostRequest
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to parse multipart form", zap.Error(err))
 		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 
 	file, handler, err := r.FormFile("image")
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to get image", zap.Error(err))
 		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
@@ -135,8 +153,9 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 	rows.File = file
 	rows.Handler = handler
 
-	response, err := c.srv.AddImage(&rows)
+	response, err := c.srv.AddImage(r.Context(), &rows)
 	if err != nil {
+		reqLogger.Error("Failed to add image to post", zap.Error(err))
 		switch {
 		case stderr.Is(err, errors.ErrPostNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -149,10 +168,12 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 		Message: response.Message,
 	})
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to write response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	reqLogger.Info("AddImageToPost done")
 }
 
 // EditPost godoc
@@ -168,12 +189,18 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 // @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId} [put]
 func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "EditPost"))
+
+	reqLogger.Info("Edit Post")
+
 	user, err := getUserFromCtx(r)
 	if err != nil {
+		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	if user.Role != consts.AuthorRole {
+		reqLogger.Error("User have no permission", zap.Error(err))
 		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
@@ -182,14 +209,16 @@ func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&rows)
 	if err != nil {
+		reqLogger.Error("Failed to decode request", zap.Error(err))
 		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 	rows.PostId = r.PathValue("postId")
 	rows.AuthorId = user.UserId
 
-	response, err := c.srv.EditPost(&rows)
+	response, err := c.srv.EditPost(r.Context(), &rows)
 	if err != nil {
+		reqLogger.Error("Failed to edit post", zap.Error(err))
 		switch {
 		case stderr.Is(err, errors.ErrPostNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -201,10 +230,12 @@ func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	reqLogger.Info("EditPost done")
 }
 
 // DeleteImageFromPost godoc
@@ -220,12 +251,18 @@ func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId}/images/{imageId} [delete]
 func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Request) {
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "DeleteImageFromPost"))
+
+	reqLogger.Info("Delete Image From Post")
+
 	user, err := getUserFromCtx(r)
 	if err != nil {
+		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	if user.Role != consts.AuthorRole {
+		reqLogger.Error("User have no permission", zap.Error(err))
 		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
@@ -234,8 +271,9 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 	rows.PostId = r.PathValue("postId")
 	rows.ImageId = r.PathValue("imageId")
 
-	response, err := c.srv.DeleteImage(&rows)
+	response, err := c.srv.DeleteImage(r.Context(), &rows)
 	if err != nil {
+		reqLogger.Error("Failed to delete image from post", zap.Error(err))
 		switch {
 		case stderr.Is(err, errors.ErrPostOrImageNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -246,10 +284,12 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 	}
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	reqLogger.Info("DeleteImageFromPost done")
 }
 
 // PublishPost godoc
@@ -266,12 +306,18 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 // @Failure 403 {string} errors.ErrNoPermission "no permission"
 // @Router /api/posts/{postId}/status [patch]
 func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "PublishPost"))
+
+	reqLogger.Info("Publish Post")
+
 	user, err := getUserFromCtx(r)
 	if err != nil {
+		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	if user.Role != consts.AuthorRole {
+		reqLogger.Error("User have no permission", zap.Error(err))
 		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
@@ -279,15 +325,16 @@ func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
 	var rows dto.PublishPostRequest
 	err = json.NewDecoder(r.Body).Decode(&rows)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to decode request", zap.Error(err))
 		http.Error(w, errors.ErrIncorrectData.Error(), http.StatusBadRequest)
 		return
 	}
 	rows.PostId = r.PathValue("postId")
 	rows.AuthorId = user.UserId
 
-	response, err := c.srv.PublishPost(&rows)
+	response, err := c.srv.PublishPost(r.Context(), &rows)
 	if err != nil {
+		reqLogger.Error("Failed to publish post", zap.Error(err))
 		switch {
 		case stderr.Is(err, errors.ErrInvalidPostStatus):
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -300,10 +347,12 @@ func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
 	}
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	reqLogger.Info("PublishPost done")
 }
 
 // ViewPosts godoc
@@ -315,8 +364,13 @@ func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} dto.GetPostsResponse
 // @Router /api/posts [get]
 func (c *PostsController) ViewPosts(w http.ResponseWriter, r *http.Request) {
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "ViewPosts"))
+
+	reqLogger.Info("View Posts")
+
 	user, err := getUserFromCtx(r)
 	if err != nil {
+		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
@@ -326,46 +380,58 @@ func (c *PostsController) ViewPosts(w http.ResponseWriter, r *http.Request) {
 	case consts.ReaderRole:
 		c.ReaderView(w, r)
 	default:
+		reqLogger.Error("User have no permission", zap.Error(err))
 		http.Error(w, errors.ErrNoPermission.Error(), http.StatusForbidden)
 		return
 	}
+
+	reqLogger.Info("ViewPosts done")
 }
 
 func (c *PostsController) AuthorView(w http.ResponseWriter, r *http.Request) {
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "AuthorView"))
+
+	reqLogger.Info("Author View")
+
 	user, err := getUserFromCtx(r)
 	if err != nil {
+		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 	}
 
 	var posts dto.GetPostsByIdRequest
 
 	posts.UserId = user.UserId
-	response, err := c.srv.ViewPostsById(&posts)
+	response, err := c.srv.ViewPostsById(r.Context(), &posts)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to view posts", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func (c *PostsController) ReaderView(w http.ResponseWriter, r *http.Request) {
-	response, err := c.srv.ViewAllPosts()
+	reqLogger := logger.LoggerFromContext(r.Context()).WithFields(zap.String("controller", "ReaderView"))
+
+	reqLogger.Info("Reader View")
+
+	response, err := c.srv.ViewAllPosts(r.Context())
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to view posts", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println(err)
+		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
