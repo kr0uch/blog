@@ -10,6 +10,7 @@ import (
 )
 
 type PostgreConfig struct {
+	DBName   string `env:"POSTGRES_DB" env-default:"blog"`
 	Port     string `env:"POSTGRES_PORT" env-default:"5432"`
 	Host     string `env:"POSTGRES_HOST" env-default:"localhost"`
 	User     string `env:"POSTGRES_USER" env-default:"postgres"`
@@ -24,7 +25,7 @@ type DB struct {
 func NewDB(DBName string, config PostgreConfig, ctx context.Context) (*DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=%s",
 		config.Host, config.Port, config.User, config.Password, config.SSLMode)
-	
+
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, errors.ErrFailedOpenDB
