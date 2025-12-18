@@ -4,6 +4,7 @@ import (
 	"blog/api"
 	_ "blog/docs"
 	"blog/internal/database/postgre"
+	"blog/internal/logger"
 	"blog/internal/repository"
 	"blog/internal/storage/minio"
 	"blog/internal/transport/rest/middlewares"
@@ -23,7 +24,7 @@ type BlogServer struct {
 	server *http.Server
 }
 
-func NewBlogServer(cfg BlogServerConfig, minioClient *minio.MinioClient, db *postgre.DB) (*BlogServer, error) {
+func NewBlogServer(cfg BlogServerConfig, minioClient *minio.MinioClient, db *postgre.DB, zapLogger logger.Logger) (*BlogServer, error) {
 	mainRouter := http.NewServeMux()
 
 	swagger := api.NewSwagger()
@@ -37,10 +38,12 @@ func NewBlogServer(cfg BlogServerConfig, minioClient *minio.MinioClient, db *pos
 	authMiddleware := middlewares.NewAuthMiddlewareHandler(authService).AuthMiddleware
 	globalMiddleware := middlewares.GlobalMiddleware
 
+	loggerMiddleware := middlewares.LoggerMiddleware(zapLogger)
+
 	mainRouter.Handle("/auth/", authRouter)
 	mainRouter.Handle("/", authMiddleware(postsRouter)) //т.к. /posts не совместим с /posts/{id}
 
-	mainRouter.Handle("/api/", http.StripPrefix("/api", globalMiddleware(mainRouter)))
+	mainRouter.Handle("/api/", http.StripPrefix("/api", loggerMiddleware(globalMiddleware(mainRouter))))
 	mainRouter.Handle("/swagger/", swagger.Router)
 
 	server := &http.Server{
