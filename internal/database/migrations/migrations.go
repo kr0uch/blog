@@ -24,10 +24,22 @@ func Up(db *sql.DB) (int, error) {
 		return -1, err
 	}
 
-	version, _, err := m.Version()
+	version, dirty, err := m.Version()
 	if err != nil {
-		return -1, err
+		if errors.Is(err, migrate.ErrNilVersion) {
+			version = 0
+		} else {
+			return -1, err
+		}
 	}
+
+	if dirty {
+		err = m.Force(int(version))
+		if err != nil {
+			return -1, err
+		}
+	}
+
 	err = m.Up()
 	if err != nil {
 		if errors.Is(err, migrate.ErrNoChange) {
