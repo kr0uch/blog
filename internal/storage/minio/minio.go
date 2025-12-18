@@ -11,11 +11,11 @@ import (
 )
 
 type MinioClientConfig struct {
-	Endpoint  string `env:"MINIO_ENDPOINT" env-default:"localhost:9000"`
-	AccessKey string `env:"MINIO_ACCESS_KEY" env-default:"minioadmin"`
-	SecretKey string `env:"MINIO_SECRET_KEY" env-default:"minioadmin"`
-	UseSSL    bool   `env:"MINIO_USE_SSL" env-default:"false"`
-	Bucket    string `env:"MINIO_BUCKET" env-default:"data"`
+	Endpoint string `env:"MINIO_ENDPOINT" env-default:"localhost:9000"`
+	User     string `env:"MINIO_ROOT_USER" env-default:"minioadmin"`
+	Password string `env:"MINIO_ROOT_PASSWORD" env-default:"miniopassword"`
+	UseSSL   bool   `env:"MINIO_USE_SSL" env-default:"false"`
+	Bucket   string `env:"MINIO_BUCKET" env-default:"data"`
 }
 
 type MinioClient struct {
@@ -26,7 +26,7 @@ type MinioClient struct {
 
 func NewMinioClient(cfg MinioClientConfig) (*MinioClient, error) {
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+		Creds:  credentials.NewStaticV4(cfg.User, cfg.Password, ""),
 		Secure: cfg.UseSSL,
 	})
 	if err != nil {
