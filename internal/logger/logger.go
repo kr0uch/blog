@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	loggerKey = "logger"
+	LoggerKey = "logger"
 
 	RequestIDKey = "request_id"
 	MethodKey    = "method"
@@ -37,11 +37,11 @@ func (l *ZapLogger) WithFields(fields ...zap.Field) Logger {
 }
 
 func LoggerWithContext(ctx context.Context, logger Logger) context.Context {
-	return context.WithValue(ctx, loggerKey, logger)
+	return context.WithValue(ctx, LoggerKey, logger)
 }
 
 func LoggerFromContext(ctx context.Context) Logger {
-	if logger, ok := ctx.Value(loggerKey).(Logger); ok {
+	if logger, ok := ctx.Value(LoggerKey).(Logger); ok {
 		return logger
 	}
 	return NewLogger()
