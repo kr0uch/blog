@@ -6,7 +6,6 @@ import (
 	"blog/internal/models/entities"
 	"blog/pkg/consts"
 	"blog/pkg/consts/errors"
-	"context"
 	"encoding/json"
 	stderr "errors"
 	"net/http"
@@ -15,13 +14,13 @@ import (
 )
 
 type PostsService interface {
-	CreatePost(ctx context.Context, post *dto.CreatePostRequest) (*dto.CreatePostResponse, error)
-	EditPost(ctx context.Context, rows *dto.EditPostRequest) (*dto.EditPostResponse, error)
-	PublishPost(ctx context.Context, post *dto.PublishPostRequest) (*dto.PublishPostResponse, error)
-	ViewPostsById(ctx context.Context, rows *dto.GetPostsByIdRequest) (*dto.GetPostsResponse, error)
-	ViewAllPosts(ctx context.Context) (*dto.GetPostsResponse, error)
-	AddImage(ctx context.Context, rows *dto.AddImageToPostRequest) (*dto.AddImageToPostResponse, error)
-	DeleteImage(ctx context.Context, rows *dto.DeleteImageFromPostRequest) (*dto.DeleteImageFromPostResponse, error)
+	CreatePost(post *dto.CreatePostRequest) (*dto.CreatePostResponse, error)
+	EditPost(rows *dto.EditPostRequest) (*dto.EditPostResponse, error)
+	PublishPost(post *dto.PublishPostRequest) (*dto.PublishPostResponse, error)
+	ViewPostsById(rows *dto.GetPostsByIdRequest) (*dto.GetPostsResponse, error)
+	ViewAllPosts() (*dto.GetPostsResponse, error)
+	AddImage(rows *dto.AddImageToPostRequest) (*dto.AddImageToPostResponse, error)
+	DeleteImage(rows *dto.DeleteImageFromPostRequest) (*dto.DeleteImageFromPostResponse, error)
 }
 
 type PostsController struct {
@@ -83,7 +82,7 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	post.AuthorId = user.UserId
 
-	response, err := c.srv.CreatePost(r.Context(), &post)
+	response, err := c.srv.CreatePost(&post)
 	if err != nil {
 		reqLogger.Error("Failed to create post", zap.Error(err))
 		switch {
@@ -154,7 +153,7 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 	rows.File = file
 	rows.Handler = handler
 
-	response, err := c.srv.AddImage(r.Context(), &rows)
+	response, err := c.srv.AddImage(&rows)
 	if err != nil {
 		reqLogger.Error("Failed to add image to post", zap.Error(err))
 		switch {
@@ -217,7 +216,7 @@ func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
 	rows.PostId = r.PathValue("postId")
 	rows.AuthorId = user.UserId
 
-	response, err := c.srv.EditPost(r.Context(), &rows)
+	response, err := c.srv.EditPost(&rows)
 	if err != nil {
 		reqLogger.Error("Failed to edit post", zap.Error(err))
 		switch {
@@ -273,7 +272,7 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 	rows.AuthorId = user.UserId
 	rows.ImageId = r.PathValue("imageId")
 
-	response, err := c.srv.DeleteImage(r.Context(), &rows)
+	response, err := c.srv.DeleteImage(&rows)
 	if err != nil {
 		reqLogger.Error("Failed to delete image from post", zap.Error(err))
 		switch {
@@ -334,7 +333,7 @@ func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
 	rows.PostId = r.PathValue("postId")
 	rows.AuthorId = user.UserId
 
-	response, err := c.srv.PublishPost(r.Context(), &rows)
+	response, err := c.srv.PublishPost(&rows)
 	if err != nil {
 		reqLogger.Error("Failed to publish post", zap.Error(err))
 		switch {
@@ -404,7 +403,7 @@ func (c *PostsController) AuthorView(w http.ResponseWriter, r *http.Request) {
 	var posts dto.GetPostsByIdRequest
 
 	posts.AuthorId = user.UserId
-	response, err := c.srv.ViewPostsById(r.Context(), &posts)
+	response, err := c.srv.ViewPostsById(&posts)
 	if err != nil {
 		reqLogger.Error("Failed to view posts", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
@@ -424,7 +423,7 @@ func (c *PostsController) ReaderView(w http.ResponseWriter, r *http.Request) {
 
 	reqLogger.Info("Reader View")
 
-	response, err := c.srv.ViewAllPosts(r.Context())
+	response, err := c.srv.ViewAllPosts()
 	if err != nil {
 		reqLogger.Error("Failed to view posts", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)

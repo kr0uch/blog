@@ -9,7 +9,7 @@ import (
 )
 
 type AuthService interface {
-	AuthorizeUser(ctx context.Context, token string) (*entities.User, error)
+	AuthorizeUser(token string) (*entities.User, error)
 }
 type AuthMiddlewareHandler struct {
 	srv AuthService
@@ -39,7 +39,7 @@ func (m *AuthMiddlewareHandler) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := m.srv.AuthorizeUser(r.Context(), token[1])
+		user, err := m.srv.AuthorizeUser(token[1])
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
