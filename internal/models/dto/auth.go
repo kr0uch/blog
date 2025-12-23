@@ -9,7 +9,7 @@ type RegistrateUserRequest struct {
 type RegistrateUserResponse struct {
 	Message      string `json:"message"`
 	AccessToken  string `json:"-"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"-"`
 }
 
 type LoginUserRequest struct {
@@ -30,5 +30,5 @@ type RefreshUserTokenRequest struct {
 type RefreshUserTokenResponse struct {
 	Message      string `json:"message"`
 	AccessToken  string `json:"-"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"-"`
 }
