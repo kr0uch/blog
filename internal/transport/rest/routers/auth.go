@@ -9,7 +9,7 @@ import (
 
 func NewAuthRouter(repo *repository.BlogRepository, secret string) (*http.ServeMux, *service.AuthService) {
 	srv := service.NewAuthService(repo, secret)
-	controller := controllers.NewAuthRouter(srv)
+	controller := controllers.NewAuthController(srv)
 	router := http.NewServeMux()
 
 	router.HandleFunc("POST /auth/register", controller.RegistrateUser)

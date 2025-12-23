@@ -4,7 +4,6 @@ import (
 	"blog/internal/logger"
 	"blog/internal/models/dto"
 	"blog/pkg/consts/errors"
-	"context"
 	"encoding/json"
 	stderr "errors"
 	"net/http"
@@ -13,15 +12,15 @@ import (
 )
 
 type AuthService interface {
-	RegistrateUser(ctx context.Context, user *dto.RegistrateUserRequest) (*dto.RegistrateUserResponse, error)
-	LoginUser(ctx context.Context, user *dto.LoginUserRequest) (*dto.LoginUserResponse, error)
-	RefreshUserToken(ctx context.Context, token *dto.RefreshUserTokenRequest) (*dto.RefreshUserTokenResponse, error)
+	RegistrateUser(user *dto.RegistrateUserRequest) (*dto.RegistrateUserResponse, error)
+	LoginUser(user *dto.LoginUserRequest) (*dto.LoginUserResponse, error)
+	RefreshUserToken(token *dto.RefreshUserTokenRequest) (*dto.RefreshUserTokenResponse, error)
 }
 type AuthController struct {
 	srv AuthService
 }
 
-func NewAuthRouter(srv AuthService) *AuthController {
+func NewAuthController(srv AuthService) *AuthController {
 	return &AuthController{
 		srv: srv,
 	}
@@ -50,7 +49,7 @@ func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response, err := c.srv.RegistrateUser(r.Context(), &request)
+	response, err := c.srv.RegistrateUser(&request)
 	if err != nil {
 		reqLogger.Error("Failed to registrate user", zap.Error(err))
 		switch {
@@ -96,7 +95,7 @@ func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := c.srv.LoginUser(r.Context(), &request)
+	response, err := c.srv.LoginUser(&request)
 	if err != nil {
 		reqLogger.Error("Failed to login user", zap.Error(err))
 		switch {
@@ -140,7 +139,7 @@ func (c *AuthController) RefreshUserToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	response, err := c.srv.RefreshUserToken(r.Context(), &request)
+	response, err := c.srv.RefreshUserToken(&request)
 	if err != nil {
 		reqLogger.Error("Failed to refresh user token", zap.Error(err))
 		switch {

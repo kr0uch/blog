@@ -1,7 +1,6 @@
 package service
 
 import (
-	"blog/internal/logger"
 	"blog/internal/models/dto"
 	"blog/internal/models/entities"
 	"blog/pkg/consts"
@@ -10,8 +9,6 @@ import (
 	"fmt"
 	"io"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 type PostsBlogRepository interface {
@@ -49,14 +46,9 @@ func NewPostsService(repo PostsBlogRepository, minio MinioRepository, bucket str
 	}
 }
 
-func (s *PostsService) CreatePost(ctx context.Context, post *dto.CreatePostRequest) (*dto.CreatePostResponse, error) {
-	reqLogger := logger.LoggerFromContext(ctx).WithFields(zap.String("operation", "CreatePost"))
-
-	reqLogger.Info("Create post")
-
+func (s *PostsService) CreatePost(post *dto.CreatePostRequest) (*dto.CreatePostResponse, error) {
 	newPost, err := s.repo.CreatePost(post.AuthorId, post.IdempotencyKey, post.Title, post.Content, consts.DraftState, time.Now(), time.Now())
 	if err != nil {
-		reqLogger.Error("Failed to create post", zap.Error(err))
 		return nil, err
 	}
 
@@ -69,29 +61,21 @@ func (s *PostsService) CreatePost(ctx context.Context, post *dto.CreatePostReque
 		Message: message,
 	}
 
-	reqLogger.Info("Create post done")
-
 	return response, nil
 }
 
-func (s *PostsService) EditPost(ctx context.Context, rows *dto.EditPostRequest) (*dto.EditPostResponse, error) {
-	reqLogger := logger.LoggerFromContext(ctx).WithFields(zap.String("operation", "EditPost"))
-
-	reqLogger.Info("Edit Post")
-
+func (s *PostsService) EditPost(rows *dto.EditPostRequest) (*dto.EditPostResponse, error) {
 	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
-		reqLogger.Error("Failed to get post by id", zap.Error(err))
 		return nil, errors.ErrPostNotFound
 	}
+
 	if post.AuthorId != rows.AuthorId {
-		reqLogger.Error("Author id does not match", zap.String("AuthorId", rows.AuthorId))
 		return nil, errors.ErrInvalidUser
 	}
 
 	newPost, err := s.repo.EditPost(post.PostId, post.AuthorId, post.IdempotencyKey, rows.Title, rows.Content, post.Status, post.CreatedAt, time.Now())
 	if err != nil {
-		reqLogger.Error("Failed to edit post", zap.Error(err))
 		return nil, err
 	}
 
@@ -104,34 +88,24 @@ func (s *PostsService) EditPost(ctx context.Context, rows *dto.EditPostRequest) 
 		Message: message,
 	}
 
-	reqLogger.Info("Edit post done")
-
 	return response, nil
 }
 
-func (s *PostsService) PublishPost(ctx context.Context, rows *dto.PublishPostRequest) (*dto.PublishPostResponse, error) {
-	reqLogger := logger.LoggerFromContext(ctx).WithFields(zap.String("operation", "PublishPost"))
-
-	reqLogger.Info("Publish Post")
-
+func (s *PostsService) PublishPost(rows *dto.PublishPostRequest) (*dto.PublishPostResponse, error) {
 	if rows.Status != consts.PublishedState {
-		reqLogger.Error("Post status is not published", zap.String("Status", rows.Status))
 		return nil, errors.ErrInvalidPostStatus
 	}
 
 	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
-		reqLogger.Error("Failed to get post by id", zap.Error(err))
 		return nil, errors.ErrPostNotFound
 	}
 	if post.AuthorId != rows.AuthorId {
-		reqLogger.Error("Author id does not match", zap.String("AuthorId", rows.AuthorId))
 		return nil, errors.ErrInvalidUser
 	}
 
 	newPost, err := s.repo.EditPost(post.PostId, post.AuthorId, post.IdempotencyKey, post.Title, post.Content, rows.Status, post.CreatedAt, time.Now())
 	if err != nil {
-		reqLogger.Error("Failed to edit post", zap.Error(err))
 		return nil, err
 	}
 
@@ -144,19 +118,12 @@ func (s *PostsService) PublishPost(ctx context.Context, rows *dto.PublishPostReq
 		Message: message,
 	}
 
-	reqLogger.Info("Publish post done")
-
 	return response, nil
 }
 
-func (s *PostsService) ViewPostsById(ctx context.Context, rows *dto.GetPostsByIdRequest) (*dto.GetPostsResponse, error) {
-	reqLogger := logger.LoggerFromContext(ctx).WithFields(zap.String("operation", "ViewPostsById"))
-
-	reqLogger.Info("View Posts By Id")
-
+func (s *PostsService) ViewPostsById(rows *dto.GetPostsByIdRequest) (*dto.GetPostsResponse, error) {
 	posts, err := s.repo.GetPostsByUserId(rows.AuthorId)
 	if err != nil {
-		reqLogger.Error("Failed to get posts by id", zap.Error(err))
 		return nil, err
 	}
 
@@ -165,19 +132,12 @@ func (s *PostsService) ViewPostsById(ctx context.Context, rows *dto.GetPostsById
 		response.Posts = append(response.Posts, *post)
 	}
 
-	reqLogger.Info("View Posts By Id done")
-
 	return response, nil
 }
 
-func (s *PostsService) ViewAllPosts(ctx context.Context) (*dto.GetPostsResponse, error) {
-	reqLogger := logger.LoggerFromContext(ctx).WithFields(zap.String("operation", "ViewAllPosts"))
-
-	reqLogger.Info("View All Posts")
-
+func (s *PostsService) ViewAllPosts() (*dto.GetPostsResponse, error) {
 	posts, err := s.repo.GetAllPosts()
 	if err != nil {
-		reqLogger.Error("Failed to get posts by id", zap.Error(err))
 		return nil, err
 	}
 
@@ -186,33 +146,24 @@ func (s *PostsService) ViewAllPosts(ctx context.Context) (*dto.GetPostsResponse,
 		response.Posts = append(response.Posts, *post)
 	}
 
-	reqLogger.Info("View All Posts done")
-
 	return response, nil
 }
 
-func (s *PostsService) AddImage(ctx context.Context, rows *dto.AddImageToPostRequest) (*dto.AddImageToPostResponse, error) {
-	reqLogger := logger.LoggerFromContext(ctx).WithFields(zap.String("operation", "AddImage"))
-
-	reqLogger.Info("Add Image")
-
+func (s *PostsService) AddImage(rows *dto.AddImageToPostRequest) (*dto.AddImageToPostResponse, error) {
 	minioCtx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
-		reqLogger.Error("Failed to get post by id", zap.Error(err))
 		return nil, errors.ErrPostNotFound
 	}
 
 	if post.AuthorId != rows.AuthorId {
-		reqLogger.Error("Author id does not match", zap.String("AuthorId", rows.AuthorId))
 		return nil, errors.ErrNoPermission
 	}
 
 	image, err := s.repo.AddImage(rows.PostId, "not-set", time.Now())
 	if err != nil {
-		reqLogger.Error("Failed to add image", zap.Error(err))
 		return nil, err
 	}
 
@@ -220,19 +171,16 @@ func (s *PostsService) AddImage(ctx context.Context, rows *dto.AddImageToPostReq
 
 	_, err = s.minio.Upload(minioCtx, s.bucket, filename, rows.File, rows.Handler.Size)
 	if err != nil {
-		reqLogger.Error("Failed to upload image", zap.Error(err))
 		return nil, err
 	}
 
 	url, err := s.minio.GenerateURL(minioCtx, s.bucket, filename, time.Hour*24*7)
 	if err != nil {
-		reqLogger.Error("Failed to generate url", zap.Error(err))
 		return nil, err
 	}
 
 	err = s.repo.SetImageURLById(image.ImageId, url)
 	if err != nil {
-		reqLogger.Error("Failed to set url", zap.Error(err))
 		return nil, err
 	}
 
@@ -245,33 +193,24 @@ func (s *PostsService) AddImage(ctx context.Context, rows *dto.AddImageToPostReq
 		Message: message,
 	}
 
-	reqLogger.Info("Add Image done")
-
 	return response, nil
 }
 
-func (s *PostsService) DeleteImage(ctx context.Context, rows *dto.DeleteImageFromPostRequest) (*dto.DeleteImageFromPostResponse, error) {
-	reqLogger := logger.LoggerFromContext(ctx).WithFields(zap.String("operation", "DeleteImage"))
-
-	reqLogger.Info("Delete Image")
-
+func (s *PostsService) DeleteImage(rows *dto.DeleteImageFromPostRequest) (*dto.DeleteImageFromPostResponse, error) {
 	minioCtx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	post, err := s.repo.GetPostById(rows.PostId)
 	if err != nil {
-		reqLogger.Error("Failed to get post by id", zap.Error(err))
 		return nil, errors.ErrPostOrImageNotFound
 	}
 
 	if rows.AuthorId != post.AuthorId {
-		reqLogger.Error("Author id does not match", zap.String("AuthorId", rows.AuthorId))
 		return nil, errors.ErrNoPermission
 	}
 
 	image, err := s.repo.GetImageById(rows.ImageId)
 	if err != nil {
-		reqLogger.Error("Failed to get image by id", zap.Error(err))
 		return nil, errors.ErrPostOrImageNotFound
 	}
 
@@ -279,13 +218,11 @@ func (s *PostsService) DeleteImage(ctx context.Context, rows *dto.DeleteImageFro
 
 	err = s.minio.DeleteImage(minioCtx, s.bucket, filename)
 	if err != nil {
-		reqLogger.Error("Failed to delete image", zap.Error(err))
 		return nil, err
 	}
 
 	err = s.repo.DeleteImageById(image.ImageId)
 	if err != nil {
-		reqLogger.Error("Failed to delete image", zap.Error(err))
 		return nil, err
 	}
 
@@ -297,8 +234,6 @@ func (s *PostsService) DeleteImage(ctx context.Context, rows *dto.DeleteImageFro
 	response := &dto.DeleteImageFromPostResponse{
 		Message: message,
 	}
-
-	reqLogger.Info("Delete Image done")
 
 	return response, nil
 }
