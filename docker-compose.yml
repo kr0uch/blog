@@ -52,6 +52,9 @@ services:
     volumes:
       - minio-storage:/data
       - minio-config:/root/.minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     networks:
       - default
     command: server /data --console-address ":9001"
