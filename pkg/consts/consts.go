@@ -1,7 +1,7 @@
 package consts
 
 const (
-	CtxUser = "user"
+	CtxUserKey = "user"
 
 	AuthorRole string = "Author"
 	ReaderRole string = "Reader"

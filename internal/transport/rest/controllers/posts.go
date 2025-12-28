@@ -35,7 +35,7 @@ func NewPostsController(srv PostsService) *PostsController {
 
 func getUserFromCtx(r *http.Request) (*entities.User, error) {
 	ctx := r.Context()
-	ctxUser := ctx.Value(consts.CtxUser)
+	ctxUser := ctx.Value(consts.CtxUserKey)
 	user, ok := ctxUser.(*entities.User)
 	if !ok {
 		return nil, errors.ErrNoPermission
@@ -63,6 +63,7 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
+		return
 	}
 
 	if user.Role != consts.AuthorRole {
@@ -125,6 +126,7 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
+		return
 	}
 
 	if user.Role != consts.AuthorRole {
@@ -197,6 +199,7 @@ func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
+		return
 	}
 
 	if user.Role != consts.AuthorRole {
@@ -259,6 +262,7 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
+		return
 	}
 
 	if user.Role != consts.AuthorRole {
@@ -315,6 +319,7 @@ func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
+		return
 	}
 
 	if user.Role != consts.AuthorRole {
@@ -373,6 +378,7 @@ func (c *PostsController) ViewPosts(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		reqLogger.Error("Failed to get user from context", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusForbidden)
+		return
 	}
 
 	switch user.Role {
@@ -406,7 +412,7 @@ func (c *PostsController) AuthorView(w http.ResponseWriter, r *http.Request) {
 	response, err := c.srv.ViewPostsById(&posts)
 	if err != nil {
 		reqLogger.Error("Failed to view posts", zap.Error(err))
-		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -426,7 +432,7 @@ func (c *PostsController) ReaderView(w http.ResponseWriter, r *http.Request) {
 	response, err := c.srv.ViewAllPosts()
 	if err != nil {
 		reqLogger.Error("Failed to view posts", zap.Error(err))
-		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
+		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusForbidden)
 		return
 	}
 
