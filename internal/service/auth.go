@@ -63,7 +63,7 @@ func (s *AuthService) RegistrateUser(user *dto.RegistrateUserRequest) (*dto.Regi
 
 	var message string
 	if newUser != nil {
-		message = "Registered successfully"
+		message = "registered successfully"
 	}
 
 	responseUser := &dto.RegistrateUserResponse{
@@ -106,7 +106,7 @@ func (s *AuthService) LoginUser(user *dto.LoginUserRequest) (*dto.LoginUserRespo
 
 	var message string
 	if newUser != nil {
-		message = "Logged in successfully"
+		message = "logged in successfully"
 	}
 
 	responseUser := &dto.LoginUserResponse{
@@ -133,7 +133,7 @@ func (s *AuthService) RefreshUserToken(token *dto.RefreshUserTokenRequest) (*dto
 
 	var message string
 	if newUser != nil {
-		message = "Refresh tokens successfully"
+		message = "refresh tokens successfully"
 	}
 
 	responseToken := &dto.RefreshUserTokenResponse{
