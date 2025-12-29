@@ -65,12 +65,14 @@ func (c *AuthController) RegistrateUser(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Authorization", "Bearer "+response.AccessToken)
 
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+	reqLogger.Info("Registrate User done")
 }
 
 // LoginUser godoc
@@ -109,12 +111,14 @@ func (c *AuthController) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Authorization", "Bearer "+response.AccessToken)
 
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+	reqLogger.Info("Login User done")
 }
 
 // RefreshUserToken godoc
@@ -152,10 +156,12 @@ func (c *AuthController) RefreshUserToken(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Authorization", "Bearer "+response.AccessToken)
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+	reqLogger.Info("Refresh User Token done")
 }
