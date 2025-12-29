@@ -75,7 +75,11 @@ func TestAuthController_RegistrateUser(t *testing.T) {
 				assert.NotEmpty(t, responseHeader)
 			},
 		},
-		//TODO: add incorrect data check in controller without mockFunc
+		{
+			name:               "incorrect data",
+			requestBody:        nil,
+			expectedStatusCode: http.StatusBadRequest,
+		},
 		{
 			name: "user already exists",
 			requestBody: &dto.RegistrateUserRequest{
@@ -115,6 +119,19 @@ func TestAuthController_RegistrateUser(t *testing.T) {
 					Return(nil, errors.ErrInvalidRole)
 			},
 		},
+		{
+			name: "internal server error",
+			requestBody: &dto.RegistrateUserRequest{
+				Email:    "test@yandex.ru",
+				Password: "password",
+				Role:     consts.AuthorRole,
+			},
+			expectedStatusCode: http.StatusForbidden,
+			mockFunc: func(m *MockAuthService) {
+				m.On("RegistrateUser", mock.AnythingOfType("*dto.RegistrateUserRequest")).
+					Return(nil, errors.ErrInternalServerError)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -125,8 +142,14 @@ func TestAuthController_RegistrateUser(t *testing.T) {
 
 			controller := NewAuthController(mockAuthService)
 
-			body, _ := json.Marshal(test.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader(body))
+			req := &http.Request{}
+
+			if test.requestBody != nil {
+				body, _ := json.Marshal(test.requestBody)
+				req = httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewBuffer(body))
+			} else {
+				req = httptest.NewRequest(http.MethodPost, "/api/auth/register", nil)
+			}
 			req.Header.Set("Content-Type", "application/json")
 
 			rr := httptest.NewRecorder()
@@ -176,6 +199,11 @@ func TestAuthController_LoginUser(t *testing.T) {
 			},
 		},
 		{
+			name:               "incorrect data",
+			requestBody:        nil,
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
 			name: "invalid email",
 			requestBody: &dto.LoginUserRequest{
 				Email:    "test@",
@@ -199,6 +227,30 @@ func TestAuthController_LoginUser(t *testing.T) {
 			},
 			expectedStatusCode: http.StatusForbidden,
 		},
+		{
+			name: "invalid user id",
+			requestBody: &dto.LoginUserRequest{
+				Email:    "test@yandex.ru",
+				Password: "password",
+			},
+			mockFunc: func(m *MockAuthService) {
+				m.On("LoginUser", mock.AnythingOfType("*dto.LoginUserRequest")).
+					Return(nil, errors.ErrInvalidUserId)
+			},
+			expectedStatusCode: http.StatusForbidden,
+		},
+		{
+			name: "internal server error",
+			requestBody: &dto.LoginUserRequest{
+				Email:    "test@yandex.ru",
+				Password: "password",
+			},
+			mockFunc: func(m *MockAuthService) {
+				m.On("LoginUser", mock.AnythingOfType("*dto.LoginUserRequest")).
+					Return(nil, errors.ErrInternalServerError)
+			},
+			expectedStatusCode: http.StatusForbidden,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -208,8 +260,14 @@ func TestAuthController_LoginUser(t *testing.T) {
 			}
 			controller := NewAuthController(mockAuthService)
 
-			body, _ := json.Marshal(test.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+			req := &http.Request{}
+			if test.requestBody != nil {
+				body, _ := json.Marshal(test.requestBody)
+				req = httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
+			} else {
+				req = httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+			}
+
 			req.Header.Set("Content-Type", "application/json")
 
 			rr := httptest.NewRecorder()
@@ -257,6 +315,11 @@ func TestAuthController_RefreshUserToken(t *testing.T) {
 			},
 		},
 		{
+			name:               "incorrect data",
+			requestBody:        nil,
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
 			name: "invalid refresh token",
 			requestBody: &dto.RefreshUserTokenRequest{
 				RefreshToken: "",
@@ -267,6 +330,17 @@ func TestAuthController_RefreshUserToken(t *testing.T) {
 			},
 			expectedStatusCode: http.StatusBadRequest,
 		},
+		{
+			name: "internal server error",
+			requestBody: &dto.RefreshUserTokenRequest{
+				RefreshToken: "refresh_token",
+			},
+			mockFunc: func(m *MockAuthService) {
+				m.On("RefreshUserToken", mock.AnythingOfType("*dto.RefreshUserTokenRequest")).
+					Return(nil, errors.ErrInternalServerError)
+			},
+			expectedStatusCode: http.StatusForbidden,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -276,8 +350,13 @@ func TestAuthController_RefreshUserToken(t *testing.T) {
 			}
 			controller := NewAuthController(mockAuthService)
 
-			body, _ := json.Marshal(test.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh-token", bytes.NewReader(body))
+			req := &http.Request{}
+			if test.requestBody != nil {
+				body, _ := json.Marshal(test.requestBody)
+				req = httptest.NewRequest(http.MethodPost, "/api/auth/refresh-token", bytes.NewBuffer(body))
+			} else {
+				req = httptest.NewRequest(http.MethodPost, "/api/auth/refresh-token", nil)
+			}
 			req.Header.Set("Content-Type", "application/json")
 
 			rr := httptest.NewRecorder()

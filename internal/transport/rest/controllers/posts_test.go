@@ -104,7 +104,7 @@ func TestPostsController_CreatePost(t *testing.T) {
 						Message: "message",
 					}, nil)
 			},
-			expectedStatusCode: http.StatusOK,
+			expectedStatusCode: http.StatusCreated,
 			checkResponseBody: func(t *testing.T, responseBody string) {
 				var response dto.CreatePostResponse
 				err := json.Unmarshal([]byte(responseBody), &response)
@@ -593,7 +593,7 @@ func TestPostsController_AddImageToPost(t *testing.T) {
 						Message: "message",
 					}, nil)
 			},
-			expectedStatusCode: http.StatusOK,
+			expectedStatusCode: http.StatusCreated,
 			checkResponseBody: func(t *testing.T, responseBody string) {
 				var response dto.AddImageToPostResponse
 				err := json.Unmarshal([]byte(responseBody), &response)
