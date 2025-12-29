@@ -95,13 +95,13 @@ func (c *PostsController) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	reqLogger.Info("CreatePost done")
 }
 
@@ -166,15 +166,13 @@ func (c *PostsController) AddImageToPost(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-	err = json.NewEncoder(w).Encode(dto.AddImageToPostResponse{
-		Message: response.Message,
-	})
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to write response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	reqLogger.Info("AddImageToPost done")
 }
 
@@ -230,7 +228,7 @@ func (c *PostsController) EditPost(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
@@ -287,6 +285,7 @@ func (c *PostsController) DeleteImageFromPost(w http.ResponseWriter, r *http.Req
 		}
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
@@ -351,13 +350,13 @@ func (c *PostsController) PublishPost(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	reqLogger.Info("PublishPost done")
 }
 
@@ -416,12 +415,14 @@ func (c *PostsController) AuthorView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+	reqLogger.Info("AuthorView done")
 }
 
 func (c *PostsController) ReaderView(w http.ResponseWriter, r *http.Request) {
@@ -436,10 +437,12 @@ func (c *PostsController) ReaderView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		reqLogger.Error("Failed to encode response", zap.Error(err))
 		http.Error(w, errors.ErrInternalServerError.Error(), http.StatusInternalServerError)
 		return
 	}
+	reqLogger.Info("ReaderView done")
 }
